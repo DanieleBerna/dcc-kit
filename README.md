@@ -47,7 +47,21 @@ For now only **StaticMeshAsset3d** exists. An Asset3d is composed by one or more
 
 - A Primitive3d is a basic 3D object (like a mesh, a bone...)
 
-### Example of a scene
+## Scene hierarchy and naming conventions
+
+The software scene needs to have a specific hierarchy.
+Each DCC has its own way to achieve this: since I only wrote the working class for Blender, I decided to use Blender's **collections** to organize the scene.
+3dsmax for example could do the same using **layers**.
+From now on, let's call these hierarchy objects as **nodes** (like tree nodes...)
+
+- Node names without any reserved character as prefix in name represent Assets
+- Node names starting with *_* represent **Groups** (see before assets parts of a composed object: these nodes actually are the object)
+- Node names starting with *#* represent **Comments**: they're used just for organization purposes in the scene and they never affect assets naming or folders
+- Node names starting with *@* represent **Tags**: they're used for adding tags/words to the asset name. They never affects folder structure at export time
+- *ignore* named node identifies a hierarchy branch that won't be considered during assets listing or export.
+
+### Scene example
+
 ```bash
 .
 └── Root
@@ -75,3 +89,10 @@ For now only **StaticMeshAsset3d** exists. An Asset3d is composed by one or more
                 └── Asset6
                     └── Primitive6_1
 ```
+
+## Export requirements and options
+
+- Option *'create_subfolders'* makes each asset to be exported into a specific subfolder of the given export folder. Subfolder name have to refer to the object (so it's equal to the asset name, minus any engine specific prefix like SM_ for unreal static meshes)
+- *'subfolder_groups_only'*, in combination with 'create_subfolder', makes all assets from the same group exported inside a common subfolder, named as the Group (and not as the asset)
+- *'scene_name_prefix'* adds the scene name at the beginning of file/folder names.
+- *'use_tags'* adds tags to the exported files and folder names
