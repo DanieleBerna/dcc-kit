@@ -1,6 +1,7 @@
 # dcc-kit
-
+## (updated)
 **dcckit is a module used to help writing pipeline scripts for 3D DCC softwares.**
+
 
 Its aim is to make the writings of python scripts and addons that edits/exports game assets a little easier...
 
@@ -35,6 +36,9 @@ Plus, I tried to learn more about coding style, good habits and so on.
 ## Key concepts
 
 - A specific object (subclassed from **Dcc**) performs operations for a software (like Blender, 3dsmax,whatever...)
+
+- Some methods (example: open_scene_file() )share a common base of code (example: check for file existence): in these cases the common code is part of a "private" Dcc class
+method (marked with "\_"), and the public method is defined abstract in base class, forcing a proper implementation in child class. 
 
 - A Dcc object has a **Scene3d member** and performs operations based on the data provided by the scene.
 
