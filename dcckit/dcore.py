@@ -315,9 +315,9 @@ class Dcc:
         self.scene = Scene3d(scene_name, scene_tree_root, scene_filepath)  # Create and store a Scene3d object
         self.scene_file_type = ""  # Scene file extension
 
-    def open_scene_file(self, filepath):
+    def _scene_file_exists(self, filepath):
         """
-        Try to open a new scene from file. In base Dcc class it just check for file existence
+        Check for given scene file existence
         :param filepath:
         :return: (bool)
         """
@@ -330,6 +330,20 @@ class Dcc:
             return False
         else:
             return True
+
+    def open_scene_file(self, filepath):
+        """
+        Try to open a new scene from file.
+        :param filepath:
+        :return: (bool)
+        """
+
+        raise NotImplementedError("'open_scene_file()' method must be implemented in a child class"
+                                  "\nand use self._scene_file_exists(filepath)"
+                                  "\n\n*** Example: ***"
+                                  "\ndef open_scene_file(self, filepath):\n"
+                                  "\tif self._scene_file_exists(filepath):\n"
+                                  "\t\t  # Use specific dcc's api to open the file")
 
     def query_current_scene_name(self):
         """ Override this in child class for specific DCCs"""
@@ -396,8 +410,12 @@ class Dcc:
         return objects_to_export, full_path
 
     def export_asset(self, asset_name, destination_folder="./", file_format="FBX", options={}):
-        raise NotImplementedError("'export_asset()' method must be implemented in a Dcc child class."
-                                  "\nA call to '_setup_export_asset_task()' must be included.")
+        raise NotImplementedError("'export_asset()' method must be implemented in a Dcc child class"
+                                  "\nand s call to '_setup_export_asset_task()' must be included."
+                                  "\n\n*** Example: ***"
+                                  "\ndef export_asset(self, asset_name, destination_folder='./', file_format='ext', options={}):"
+                                  "\n\tobjects_to_export, full_path = self._setup_export_asset_task(asset_name, destination_folder, file_format, options)"
+                                  "\n\t  # for object in objects_to_export -> export object to full_path")
 
 
 if __name__ == "__main__":
@@ -408,3 +426,4 @@ if __name__ == "__main__":
         print(f"Dcc object created: {dcc}")
     except Exception as e:
         print(f"An error has occurred!\n\n{e}")
+
