@@ -343,7 +343,7 @@ class Dcc:
         """ Override this in child class for specific DCCs"""
         return SceneNode()
 
-    def export_asset(self, asset_name, destination_folder="./", file_format="FBX", options={}):
+    def _setup_export_asset_task(self, asset_name, destination_folder="./", file_format="FBX", options={}):
         """
         Override this in child class for specific DCCs
         It export a given asset from the scene to a file
@@ -394,6 +394,10 @@ class Dcc:
 
         print(f"Exporting {asset_to_export.name} with name {asset_name} in {destination_folder}")
         return objects_to_export, full_path
+
+    def export_asset(self, asset_name, destination_folder="./", file_format="FBX", options={}):
+        raise NotImplementedError("'export_asset()' method must be implemented in a Dcc child class."
+                                  "\nA call to '_setup_export_asset_task()' must be included.")
 
 
 if __name__ == "__main__":
