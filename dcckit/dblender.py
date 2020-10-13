@@ -29,7 +29,7 @@ class BlenderDcc(dcore.Dcc):
         return bpy.context
 
     def open_scene_file(self, filepath):
-        if self._scene_file_exists(filepath):
+        if super().open_scene_file(filepath):
             bpy.ops.wm.open_mainfile(filepath=filepath)
             return True
         else:
@@ -114,7 +114,7 @@ class BlenderDcc(dcore.Dcc):
         return tree_root
 
     def export_asset(self, asset_name, destination_folder="./", file_format="FBX", options={}):
-        objects_to_export, full_path = self._setup_export_asset_task(asset_name, destination_folder=destination_folder,
+        objects_to_export, full_path = super().export_asset(asset_name, destination_folder=destination_folder,
                                                             file_format=file_format, options=options)
 
         # This line is needed to remove any unwanted '.[0-9][0-9][0-9]' string present in asset name due to Blender handling of duplicated collections name
