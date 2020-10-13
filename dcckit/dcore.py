@@ -9,9 +9,11 @@ Dcc class has basic methods and attributes: for specific software the class need
 
 import os
 import getpass
+import logging
 from datetime import datetime
 from enum import Enum
 
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 """
 These constants define the special characters and words used in scene hierarchy.
@@ -315,21 +317,37 @@ class Dcc:
         self.scene = Scene3d(scene_name, scene_tree_root, scene_filepath)  # Create and store a Scene3d object
         self.scene_file_type = ""  # Scene file extension
 
-    def open_scene_file(self, filepath):
+    def _scene_file_exists(self, filepath):
         """
-        Try to open a new scene from file. In base Dcc class it just check for file existence
+        Check for given scene file existence
         :param filepath:
         :return: (bool)
         """
 
         if os.path.splitext(filepath)[1] != self.scene_file_type:
-            print("Wrong file extension")
+            logging.warning(f"Wrong file extension\n"
+                            f"got: {os.path.splitext(filepath)[1]}\n"
+                            f"expected: {self.scene_file_type}")
             return False
         elif not os.path.exists(filepath):
-            print("Scene file doesn't exists")
+            logging.warning(f"Scene file {filepath} doesn't exists")
             return False
         else:
             return True
+
+    def open_scene_file(self, filepath):
+        """
+        Try to open a new scene from file.
+        :param filepath:
+        :return: (bool)
+        """
+
+        raise NotImplementedError("'open_scene_file()' method must be implemented in a child class"
+                                  "\nand use self._scene_file_exists(filepath)"
+                                  "\n\n*** Example: ***"
+                                  "\ndef open_scene_file(self, filepath):\n"
+                                  "\tif self._scene_file_exists(filepath):\n"
+                                  "\t\t  # Use specific dcc's api to open the file")
 
     def query_current_scene_name(self):
         """ Override this in child class for specific DCCs"""
@@ -343,7 +361,7 @@ class Dcc:
         """ Override this in child class for specific DCCs"""
         return SceneNode()
 
-    def export_asset(self, asset_name, destination_folder="./", file_format="FBX", options={}):
+    def _setup_export_asset_task(self, asset_name, destination_folder="./", file_format="FBX", options={}):
         """
         Override this in child class for specific DCCs
         It export a given asset from the scene to a file
@@ -355,7 +373,7 @@ class Dcc:
         """
         asset_to_export = self.scene.search_asset_by_name(asset_name)  # Get the desired asset from the Scene
         if asset_to_export is None:
-            print("Asset is invalid or doesn't exist")
+            logging.warning(f"Asset is invalid or doesn't exist: {asset_name}")
             return False
 
         """ Compose full name for the file that must be exported, depending on options """
@@ -392,15 +410,26 @@ class Dcc:
                 sockets_to_export = [socket.data for socket in asset_to_export.sockets]
             objects_to_export = meshes_to_export + colliders_to_export + sockets_to_export
 
-        print(f"Exporting {asset_to_export.name} with name {asset_name} in {destination_folder}")
+        logging.info(f"Exporting {asset_to_export.name} with name {asset_name} in {destination_folder}")
         return objects_to_export, full_path
+
+    def export_asset(self, asset_name, destination_folder="./", file_format="FBX", options={}):
+        raise NotImplementedError("'export_asset()' method must be implemented in a Dcc child class"
+                                  "\nand s call to '_setup_export_asset_task()' must be included."
+                                  "\n\n*** Example: ***"
+                                  "\ndef export_asset(self, asset_name, destination_folder='./', file_format='ext', options={}):"
+                                  "\n\tobjects_to_export, full_path = self._setup_export_asset_task(asset_name, destination_folder, file_format, options)"
+                                  "\n\t  # for object in objects_to_export -> export object to full_path")
 
 
 if __name__ == "__main__":
-    print("\n\n*********** DCC Test ***********")
-    print("\nTest 0 - Create a DCC and build a scene tree: ")
+    logging.debug("\n*********** DCC Test ***********")
+    logging.debug("\nTest 0 - Create a DCC and build a scene tree: ")
     try:
         dcc = Dcc()
-        print(f"Dcc object created: {dcc}")
+        logging.debug(f"Dcc object created: {dcc}")
     except Exception as e:
-        print(f"An error has occurred!\n\n{e}")
+        logging.warning(f"An error has occurred!\n\n{e}")
+    logging.debug("\nTest 1 - Try to export asset without implementing the abstract method export_asset(): ")
+    dcc.export_asset("raise_a_NotImplementedError!")
+
