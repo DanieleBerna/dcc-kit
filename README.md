@@ -74,7 +74,7 @@ From now on, let's call these hierarchy objects as **nodes** (like tree nodes...
     │   ├── Primitive1_2
     │   └── Primitive1_3
     └── #Comment1
-        ├── _Set1
+        ├── _Group1
         │   ├── Asset2
         │   ├── Primitive2_1
         │   ├── Primitive2_2
@@ -86,7 +86,7 @@ From now on, let's call these hierarchy objects as **nodes** (like tree nodes...
         │   └── Asset4
         │       └── Primitive4_1
         └── @Tag2
-            └── _Set2
+            └── _Group2
                 ├── Asset5
                 │   ├── Primitive5_1
                 │   └── Primitive5_2
@@ -96,7 +96,9 @@ From now on, let's call these hierarchy objects as **nodes** (like tree nodes...
 
 ## Export requirements and options
 
-- Option *'create_subfolders'* makes each asset to be exported into a specific subfolder of the given export folder. Subfolder name have to refer to the object (so it's equal to the asset name, minus any engine specific prefix like SM_ for unreal static meshes)
+When exporting, some options can be used to control:
+- *'scene_name_prefix'* add the scene name as prefix to the exported file (ie scenename_assetname.fbx) and folder too.
+- *'use_tags'* tags and group names are added to the exported file (ie tag_group_tag_assetname.fbx).
+- *'create_subfolders'* makes each asset to be exported into a specific subfolder of the given export folder. Subfolder name have to refer to the object (so it's equal to the asset name, minus any engine specific prefix like SM_ for unreal static meshes)
 - *'subfolder_groups_only'*, in combination with 'create_subfolder', makes all assets from the same group exported inside a common subfolder, named as the Group (and not as the asset)
-- *'scene_name_prefix'* adds the scene name at the beginning of file/folder names.
-- *'use_tags'* adds tags to the exported files and folder names
+
