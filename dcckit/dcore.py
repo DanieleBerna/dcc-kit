@@ -25,6 +25,7 @@ GROUP_PREFIX = '_'  # A Group is similar to a tag but Group name can be included
 IGNORE = 'ignore'  # This is a special name used to exclude all its content from assets exporting
 ROOT = "root"  # Name given to the root node of built scene tree
 DCC_ROOTS_LIST = ('Master Collection',)  # list of names used by DCCs to call the root element in a scene hierarchy
+DCC_RESERVED_LIST = ('Cutters',)  # list of reserved names used by DCCs for hierarchy elements that shouldn't be considered
 
 
 class Primitive3dRoles(Enum):
@@ -160,6 +161,7 @@ class SceneNodeTypes(Enum):
     GROUP = 3  # node representing an assets group
     ASSET = 4  # node containing an asset
     TAG = 5  # Tag node
+    RESERVED = 6  # Reserved by DCC
 
 
 class SceneNode:
@@ -206,7 +208,7 @@ class Scene3d:
         if node is None:
             node = self.tree
 
-        if use_ignore and node.name.lower() == IGNORE:  # return immediately if the 'ignore' element is found
+        if (use_ignore and node.type == SceneNodeTypes.IGNORE) or node.type == SceneNodeTypes.RESERVED:  # return immediately if the 'ignore' element is found
             return assets
 
         if node.type == SceneNodeTypes.ASSET:
@@ -227,7 +229,7 @@ class Scene3d:
         if node is None:
             node = self.tree
 
-        if use_ignore and node.name.lower() == IGNORE:  # return immediately if the 'ignore' element is found
+        if (use_ignore and node.type == SceneNodeTypes.IGNORE) or node.type == SceneNodeTypes.RESERVED:  # return immediately if the 'ignore' element is found
             return
 
         if node.name == asset_name and node.type == SceneNodeTypes.ASSET:
@@ -266,7 +268,7 @@ class Scene3d:
         if node is None:
             node = self.tree
 
-        if use_ignore and node.name.lower() == IGNORE:  # return immediately if the 'ignore' element is found
+        if (use_ignore and node.type == SceneNodeTypes.IGNORE) or node.type == SceneNodeTypes.RESERVED:  # return immediately if the 'ignore' element is found
             return groups
 
         if node.type == SceneNodeTypes.GROUP:
@@ -287,7 +289,7 @@ class Scene3d:
         if node is None:
             node = self.tree
 
-        if use_ignore and node.name.lower() == IGNORE:  # return immediately if the 'ignore' element is found
+        if (use_ignore and node.type == SceneNodeTypes.IGNORE) or node.type == SceneNodeTypes.RESERVED:  # return immediately if the 'ignore' element is found
             return
 
         if node.name == group_name and node.type == SceneNodeTypes.GROUP:

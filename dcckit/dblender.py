@@ -10,17 +10,18 @@ import re
 import bpy
 
 from . import dcore
-from .dcore import DCC_ROOTS_LIST, ROOT, IGNORE, TAG_PREFIX, COMMENT_PREFIX, GROUP_PREFIX
+from .dcore import DCC_ROOTS_LIST, DCC_RESERVED_LIST, ROOT, IGNORE, TAG_PREFIX, COMMENT_PREFIX, GROUP_PREFIX
 
 
 class BlenderDcc(dcore.Dcc):
     """Extends Dcc class to handle a Blender scene """
     def __init__(self):
-        super().__init__(self)
         self.context = self.build_context()
         self.scene_file_type = "blend"
+        super().__init__()
 
-    def build_context(self):
+    @staticmethod
+    def build_context():
         """
         Build a valid context for use of the class inside some external gui like PySide2.
         To be HEAVILY tested.
@@ -60,6 +61,9 @@ class BlenderDcc(dcore.Dcc):
             if root.name.rstrip() in DCC_ROOTS_LIST:
                 scene_node.type = dcore.SceneNodeTypes.ROOT
                 scene_node.name = ROOT
+            elif root.name.lower() in DCC_RESERVED_LIST:
+                scene_node.type = dcore.SceneNodeTypes.RESERVED
+                scene_node.name = "-reserved-"
             elif root.name.lower() == IGNORE:
                 scene_node.type = dcore.SceneNodeTypes.IGNORE
                 scene_node.name = IGNORE
