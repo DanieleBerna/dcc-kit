@@ -15,8 +15,11 @@ from .dcore import DCC_ROOTS_LIST, DCC_RESERVED_LIST, ROOT, IGNORE, TAG_PREFIX, 
 
 class BlenderDcc(dcore.Dcc):
     """Extends Dcc class to handle a Blender scene """
-    def __init__(self):
-        self.context = self.build_context()
+    def __init__(self, context=None):
+        if context is not None:
+            self.context = context
+        else:
+            self.context = self.build_context()
         self.scene_file_type = "blend"
         super().__init__()
 
