@@ -65,6 +65,7 @@ class BlenderDcc(dcore.Dcc):
                 scene_node.type = dcore.SceneNodeTypes.ROOT
                 scene_node.name = ROOT
             elif root.name.lower() in DCC_RESERVED_LIST:
+                print(root.name)
                 scene_node.type = dcore.SceneNodeTypes.RESERVED
                 scene_node.name = "-reserved-"
             elif root.name.lower() == IGNORE:

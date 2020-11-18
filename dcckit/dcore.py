@@ -25,7 +25,7 @@ GROUP_PREFIX = '_'  # A Group is similar to a tag but Group name can be included
 IGNORE = 'ignore'  # This is a special name used to exclude all its content from assets exporting
 ROOT = "root"  # Name given to the root node of built scene tree
 DCC_ROOTS_LIST = ('Master Collection',)  # list of names used by DCCs to call the root element in a scene hierarchy
-DCC_RESERVED_LIST = ('Cutters',)  # list of reserved names used by DCCs for hierarchy elements that shouldn't be considered
+DCC_RESERVED_LIST = ('cutters',)  # list of reserved names used by DCCs for hierarchy elements that shouldn't be considered
 
 
 class Primitive3dRoles(Enum):
@@ -216,7 +216,7 @@ class Scene3d:
             return assets
         else:
             for child in node.children:
-                assets = self.search_all_assets(node=child, assets=assets)
+                assets = self.search_all_assets(node=child, assets=assets[:])
             return assets
 
     def search_asset_by_name(self, asset_name, node=None, use_ignore=True):
@@ -276,7 +276,7 @@ class Scene3d:
             return groups
         else:
             for child in node.children:
-                groups = self.search_all_groups(node=child, groups=groups)
+                groups = self.search_all_groups(node=child, groups=groups[:])
             return groups
 
     def search_group_tags_by_name(self, group_name, node=None, use_ignore=True):
@@ -313,10 +313,10 @@ class Dcc:
     """Class for a generic DCC software"""
 
     def __init__(self):
-        scene_name = self.query_current_scene_name()  # Get the currently opened scene name from scene file
-        scene_filepath = self.query_current_scene_filepath()  # Get the currently opened scene filepath
-        scene_tree_root = self.query_current_scene_tree()   # Build the assets hierarchy from the scene
-        self.scene = Scene3d(scene_name, scene_tree_root, scene_filepath)  # Create and store a Scene3d object
+        self.scene_name = self.query_current_scene_name()  # Get the currently opened scene name from scene file
+        self.scene_filepath = self.query_current_scene_filepath()  # Get the currently opened scene filepath
+        self.scene_tree_root = self.query_current_scene_tree()   # Build the assets hierarchy from the scene
+        self.scene = Scene3d(self.scene_name, self.scene_tree_root, self.scene_filepath)  # Create and store a Scene3d object
         self.scene_file_type = ""  # Scene file extension
 
     def _scene_file_exists(self, filepath):
