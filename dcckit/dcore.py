@@ -93,7 +93,7 @@ class Asset3d:
         return output
 
     def compose_tagged_name(self):
-        """ Build full name for the file that must be exported """
+        """ Build the name of the assets with tags and groups """
         tags = []
         asset_name = self.name.split('.')[0]
         try:
@@ -107,6 +107,32 @@ class Asset3d:
         tagged_name = "_".join(tags) + asset_name
         return tagged_name
 
+    def compose_full_name(self, engine_prefix="", scene_name="", use_tags=True):
+        """ Build full name for the file that must be exported """
+        asset_name = self.name.split('.')[0]
+
+        if use_tags:
+            tags = []
+            try:
+                tags = self.tags[:]
+                group_index = self.tags.index(".")
+                tags[group_index] = self.group
+            except ValueError:
+                pass
+            if tags:
+                tags.append("")
+            asset_name = "_".join(tags) + asset_name
+        else:
+            asset_name = f"{self.group}_{asset_name}"  # add Set group
+
+        if scene_name:
+            asset_name = f"{scene_name}_{asset_name}"
+
+        if engine_prefix:
+            asset_name = f"{engine_prefix}_{asset_name}"
+
+        return asset_name
+
 
 class StaticMesh3d(Asset3d):
     """
@@ -114,6 +140,8 @@ class StaticMesh3d(Asset3d):
     It is composed by one or more Primitive3d of mesh type
     and it could have some colliders and sockets
     """
+
+    engine_prefix = "SM_"
 
     def __init__(self, name="", primitives=[], type=Asset3dTypes.STATIC_MESH, group="", tags=[], metadata={}):
         """
@@ -144,7 +172,7 @@ class StaticMesh3d(Asset3d):
             output = output + repr(socket)
         return output
 
-    def compose_tagged_name(self):
+    def _compose_tagged_name(self):
         """
         Overrides super method.
         Build full name for the file that must be exported, adding StaticMesh prefix (Unreal Engine style)
@@ -379,11 +407,12 @@ class Dcc:
             return False
 
         """ Compose full name for the file that must be exported, depending on options """
-        scene_name = ""
-        if options['scene_name_prefix']:
-            scene_name = self.scene.name + "_"
         if options['use_tags']:
             asset_name = asset_to_export.compose_tagged_name()
+        else:
+            asset_name = f"{asset_to_export.group}_{asset_to_export.name}"
+        if options['scene_name_prefix']:
+            asset_name = f"{self.scene.name}_{asset_name}"
 
         """ Compose export path """
         if options['create_subfolders']:
