@@ -114,15 +114,13 @@ class BlenderDcc(dcore.Dcc):
                 for child in root.children:
                     scene_node.children.append(recurse_scene_hierarchy(child, scene_node, group, tags[:]))
 
-            print(f"Scene node: {scene_node.name}, tags: {scene_node.tags}")
             return scene_node
 
         tree_root = recurse_scene_hierarchy(master_collection, None)
-        print(f"Scene tree built: root is {tree_root}")
         return tree_root
 
-    def export_asset(self, asset_name, destination_folder="./", file_format="FBX", options={}):
-        objects_to_export, full_path = self._setup_export_asset_task(asset_name, destination_folder=destination_folder,
+    def export_asset(self, asset_name, file_name="", destination_folder="./", file_format="FBX", options={}):
+        objects_to_export, full_path = self._setup_export_asset_task(asset_name, file_name=file_name, destination_folder=destination_folder,
                                                             file_format=file_format, options=options)
 
         # This line is needed to remove any unwanted '.[0-9][0-9][0-9]' string present in asset name due to Blender handling of duplicated collections name

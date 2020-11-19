@@ -92,7 +92,7 @@ class Asset3d:
             output = output + repr(prim)
         return output
 
-    def compose_tagged_name(self):
+    def compose_tagged_name(self):  # DEPRECATED
         """ Build the name of the assets with tags and groups """
         tags = []
         asset_name = self.name.split('.')[0]
@@ -107,8 +107,13 @@ class Asset3d:
         tagged_name = "_".join(tags) + asset_name
         return tagged_name
 
-    def compose_full_name(self, engine_prefix="", scene_name="", use_tags=True):
-        """ Build full name for the file that must be exported """
+    def compose_full_name(self, scene_name="", use_tags=True):
+        """
+        Build full name for the file that must be exported
+        :param scene_name:
+        :param use_tags:
+        :return:
+        """
         asset_name = self.name.split('.')[0]
 
         if use_tags:
@@ -122,14 +127,13 @@ class Asset3d:
             if tags:
                 tags.append("")
             asset_name = "_".join(tags) + asset_name
+
         else:
-            asset_name = f"{self.group}_{asset_name}"  # add Set group
+            if self.group:
+                asset_name = f"{self.group}_{asset_name}"  # add Set group
 
         if scene_name:
             asset_name = f"{scene_name}_{asset_name}"
-
-        if engine_prefix:
-            asset_name = f"{engine_prefix}_{asset_name}"
 
         return asset_name
 
@@ -172,7 +176,7 @@ class StaticMesh3d(Asset3d):
             output = output + repr(socket)
         return output
 
-    def _compose_tagged_name(self):
+    def compose_tagged_name(self):  # DEPRECATED
         """
         Overrides super method.
         Build full name for the file that must be exported, adding StaticMesh prefix (Unreal Engine style)
@@ -226,7 +230,7 @@ class Scene3d:
             output = output + repr(asset)
         return output
 
-    def search_all_assets(self, node=None, assets=[], use_ignore=True):
+    def search_all_assets(self, node=None, assets=[], use_ignore=True, non_empty_only=True):
         """
         Return a list of all valid Assets in the scene tree
         :keyword param node: (SceneNode) the tree node from where the recursive search must start
@@ -239,7 +243,7 @@ class Scene3d:
         if (use_ignore and node.type == SceneNodeTypes.IGNORE) or node.type == SceneNodeTypes.RESERVED:  # return immediately if the 'ignore' element is found
             return assets
 
-        if node.type == SceneNodeTypes.ASSET:
+        if node.type == SceneNodeTypes.ASSET and node.content.primitives:
             assets.append(node.content)
             return assets
         else:
@@ -247,12 +251,12 @@ class Scene3d:
                 assets = self.search_all_assets(node=child, assets=assets[:])
             return assets
 
-    def search_asset_by_name(self, asset_name, node=None, use_ignore=True):
+    def search_asset_by_name(self, asset_name, node=None, use_ignore=True, non_empty_only=True):
         """
         Search and return an Assets given its name from the scene tree
         :param asset_name: (str) the name of the asset that must be searched
-        :keyword param node: (SceneNode) the tree node from where the recursive search must start
-        :keyword param use_ignore: (bool) do not include 'ignore' branch in search
+        :param node: (SceneNode) the tree node from where the recursive search must start
+        :param use_ignore: (bool) do not include 'ignore' branch in search
         """
         if node is None:
             node = self.tree
@@ -260,7 +264,7 @@ class Scene3d:
         if (use_ignore and node.type == SceneNodeTypes.IGNORE) or node.type == SceneNodeTypes.RESERVED:  # return immediately if the 'ignore' element is found
             return
 
-        if node.name == asset_name and node.type == SceneNodeTypes.ASSET:
+        if node.name == asset_name and node.type == SceneNodeTypes.ASSET and node.content.primitives:
             return node.content
         else:
             asset = None
@@ -269,16 +273,16 @@ class Scene3d:
                 if asset is not None:
                     return asset
 
-    def search_assets_by_group(self, group_name, node=None):
+    def search_assets_by_group(self, group_name, node=None, non_empty_only=True):
         """
         Search and return Assets given that belongs to a given group
         :param group_name: (str) the name of the group that must be used for assets search
-        :keyword param node: (SceneNode) the tree node from where the recursive search must start
+        :param node: (SceneNode) the tree node from where the recursive search must start
         """
         if node is None:
             node = self.tree
         if node.name == group_name and node.type == SceneNodeTypes.GROUP:
-            return [c.content for c in node.children if c.type == SceneNodeTypes.ASSET]
+            return [c.content for c in node.children if c.type == SceneNodeTypes.ASSET and node.content.primitives]
         else:
             assets = None
             for child in node.children:
@@ -391,7 +395,7 @@ class Dcc:
         """ Override this in child class for specific DCCs"""
         return SceneNode()
 
-    def _setup_export_asset_task(self, asset_name, destination_folder="./", file_format="FBX", options={}):
+    def _setup_export_asset_task(self, asset_name, file_name="", destination_folder="./", file_format="FBX", options={}):
         """
         Override this in child class for specific DCCs
         It export a given asset from the scene to a file
@@ -407,26 +411,36 @@ class Dcc:
             return False
 
         """ Compose full name for the file that must be exported, depending on options """
-        if options['use_tags']:
-            asset_name = asset_to_export.compose_tagged_name()
-        else:
-            asset_name = f"{asset_to_export.group}_{asset_to_export.name}"
-        if options['scene_name_prefix']:
-            asset_name = f"{self.scene.name}_{asset_name}"
+        if not file_name:  # if a file name is provided, skip name creation based on options
+            if options['use_tags']:
+                asset_name = asset_to_export.compose_tagged_name()
+            else:
+                asset_name = f"{asset_to_export.group}_{asset_to_export.name}"
+            if options['scene_name_prefix']:
+                asset_name = f"{self.scene.name}_{asset_name}"
 
         """ Compose export path """
+        if options['scene_name_prefix']:
+            scene_prefix = f"{self.scene.name}_"
+        else:
+            scene_prefix = ""
         if options['create_subfolders']:
             if options['subfolder_groups_only']:
                 if asset_to_export.group:
                     group_tags = self.scene.search_group_tags_by_name(asset_to_export.group)
                     tagged_group_name = "_".join(group_tags+[asset_to_export.group])
-                    destination_folder = os.path.join(destination_folder, scene_name + tagged_group_name)
+                    destination_folder = os.path.join(destination_folder, scene_prefix + tagged_group_name)
                 else:
-                    destination_folder = os.path.join(destination_folder, scene_name + asset_name)
+                    destination_folder = os.path.join(destination_folder, scene_prefix + file_name)
             else:
-                destination_folder = os.path.join(destination_folder, scene_name + asset_name)
+                destination_folder = os.path.join(destination_folder, scene_prefix + file_name)
 
-        full_path = os.path.join(destination_folder, asset_name + "." + file_format)
+        if asset_to_export.type == Asset3dTypes.STATIC_MESH:
+            engine_prefix = StaticMesh3d.engine_prefix
+        else:
+            engine_prefix = ""
+
+        full_path = os.path.join(destination_folder, engine_prefix+file_name + "." + file_format)
         if not os.path.exists(destination_folder):
             try:
                 os.makedirs(destination_folder)
@@ -444,7 +458,7 @@ class Dcc:
         logging.info(f"Exporting {asset_to_export.name} with name {asset_name} in {destination_folder}")
         return objects_to_export, full_path
 
-    def export_asset(self, asset_name, destination_folder="./", file_format="FBX", options={}):
+    def export_asset(self, asset_name, file_name="", destination_folder="./", file_format="FBX", options={}):
         raise NotImplementedError("'export_asset()' method must be implemented in a Dcc child class"
                                   "\nand s call to '_setup_export_asset_task()' must be included."
                                   "\n\n*** Example: ***"
