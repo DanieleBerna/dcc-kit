@@ -91,6 +91,7 @@ class BlenderDcc(dcore.Dcc):
                 for obj in root.all_objects.items():
                     if not isinstance(obj, bpy.types.Collection) and obj[1].type in ("EMPTY", "MESH"):
                         is_valid = False
+                        prim_vertex_count = 0
                         prim_data = obj[1]
                         prim_name = prim_data.name
                         socket_naming_pattern = re.compile("^SOCKET_.*")
@@ -103,10 +104,11 @@ class BlenderDcc(dcore.Dcc):
                             is_valid = True
                         elif prim_data.type == "MESH":
                             primitive_type = dcore.Primitive3dRoles.MESH
+                            prim_vertex_count = len(prim_data.data.vertices)
                             is_valid = True
 
                         if is_valid:
-                            temp_primitives.append(dcore.Primitive3d(obj[1], prim_name, primitive_type))
+                            temp_primitives.append(dcore.Primitive3d(obj[1], prim_name, primitive_type, prim_vertex_count))
                 scene_node.content = dcore.StaticMesh3d(name=scene_node.name, type=dcore.Asset3dTypes.STATIC_MESH,
                                                         group=group, tags=tags, primitives=temp_primitives)
 

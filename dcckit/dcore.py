@@ -43,7 +43,7 @@ class Primitive3d:
     A Primitive3d could be any type of basic 3D primitive (a mesh, an empty object, a bone...)
     """
 
-    def __init__(self, data, name="", role=Primitive3dRoles.EMPTY):
+    def __init__(self, data, name="", role=Primitive3dRoles.EMPTY, vertex_count=0):
         """
         :param data: actual object data inside the DCC
         :keyword param name: (str) primitive name
@@ -52,6 +52,7 @@ class Primitive3d:
         self.data = data
         self.name = name
         self.role = role
+        self.vertex_count = vertex_count
 
     def __repr__(self):
         return f"\n\t\tPrimitive: {self.name} ({self.role})\n"
@@ -85,12 +86,20 @@ class Asset3d:
         self.group = group
         self.tags = tags
         self.metadata = metadata
+        self.vertex_count = self.query_vertex_count()
 
     def __repr__(self):
         output = f"\n\tAsset: {self.name}\n\tType: {self.type}\n\tGroup: {self.group}\n"
         for prim in self.primitives:
             output = output + repr(prim)
         return output
+
+    def query_vertex_count(self):
+        count = 0
+        for p in self.primitives:
+            count = count + p.vertex_count
+        return count
+
 
     def compose_tagged_name(self):  # DEPRECATED
         """ Build the name of the assets with tags and groups """
@@ -393,7 +402,8 @@ class Dcc:
 
     def query_current_scene_tree(self):
         """ Override this in child class for specific DCCs"""
-        return SceneNode()
+        raise NotImplementedError("'query_current_scene_tree()' method must be implemented in a Dcc child class"
+                                  "\nand return the SceneNode object representing the scene hierarchy root")
 
     def _setup_export_asset_task(self, asset_name, file_name="", destination_folder="./", file_format="FBX", options={}):
         """
