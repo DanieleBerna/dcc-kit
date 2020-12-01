@@ -405,7 +405,7 @@ class Dcc:
         raise NotImplementedError("'query_current_scene_tree()' method must be implemented in a Dcc child class"
                                   "\nand return the SceneNode object representing the scene hierarchy root")
 
-    def _setup_export_asset_task(self, asset_name, file_name="", destination_folder="./", file_format="FBX", options={}):
+    def _setup_export_asset_task(self, asset_name, file_name="", destination_folder="./", file_format="fbx", options={}):
         """
         Override this in child class for specific DCCs
         It export a given asset from the scene to a file
@@ -468,7 +468,7 @@ class Dcc:
         logging.info(f"Exporting {asset_to_export.name} with name {asset_name} in {destination_folder}")
         return objects_to_export, full_path
 
-    def export_asset(self, asset_name, file_name="", destination_folder="./", file_format="FBX", options={}):
+    def export_asset(self, asset_name, file_name="", destination_folder="./", file_format="fbx", options={}):
         raise NotImplementedError("'export_asset()' method must be implemented in a Dcc child class"
                                   "\nand s call to '_setup_export_asset_task()' must be included."
                                   "\n\n*** Example: ***"

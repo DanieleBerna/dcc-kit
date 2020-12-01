@@ -121,7 +121,7 @@ class BlenderDcc(dcore.Dcc):
         tree_root = recurse_scene_hierarchy(master_collection, None)
         return tree_root
 
-    def export_asset(self, asset_name, file_name="", destination_folder="./", file_format="FBX", options={}):
+    def export_asset(self, asset_name, file_name="", destination_folder="./", file_format="fbx", options={}):
         objects_to_export, full_path = self._setup_export_asset_task(asset_name, file_name=file_name, destination_folder=destination_folder,
                                                             file_format=file_format, options=options)
 
