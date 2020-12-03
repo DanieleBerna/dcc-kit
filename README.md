@@ -31,7 +31,7 @@ Plus, I tried to learn more about coding style, good habits and so on.
 
 ## What's inside
 - **dcore.py**: contains all the base classes representing 3D primitives, assets, scene and a generic DCC.
-- **blender.py** : contains a child class of Dcc, implementing Blender specific methods
+- **dblender.py** : contains a child class of Dcc, implementing Blender specific methods
 
 ## Key concepts
 
