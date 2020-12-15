@@ -71,7 +71,7 @@ class Asset3d:
     An Asset3D is composed by one or more Primitive3d
     """
 
-    def __init__(self, name="", primitives=[], type=Asset3dTypes.STATIC_MESH, group="", tags=[], metadata={}):
+    def __init__(self, name="", unique_name="", primitives=[], type=Asset3dTypes.STATIC_MESH, group="", tags=[], metadata={}):
         """
         :keyword param name: (str) assets name
         :keyword param primitives: (list) Primitives3d objects composing the asset
@@ -81,6 +81,7 @@ class Asset3d:
         :keyword metadata: (dict) asset metadata (NOT USED YET!!)
         """
         self.name = name
+        self.unique_name = unique_name
         self.primitives = primitives
         self.type = type
         self.group = group
@@ -99,7 +100,6 @@ class Asset3d:
         for p in self.primitives:
             count = count + p.vertex_count
         return count
-
 
     def compose_tagged_name(self):  # DEPRECATED
         """ Build the name of the assets with tags and groups """
@@ -123,7 +123,8 @@ class Asset3d:
         :param use_tags:
         :return:
         """
-        asset_name = self.name.split('.')[0]
+        # asset_name = self.name.split('.')[0]
+        asset_name = self.unique_name
 
         if use_tags:
             tags = []
@@ -156,7 +157,7 @@ class StaticMesh3d(Asset3d):
 
     engine_prefix = "SM_"
 
-    def __init__(self, name="", primitives=[], type=Asset3dTypes.STATIC_MESH, group="", tags=[], metadata={}):
+    def __init__(self, name="", unique_name="", primitives=[], type=Asset3dTypes.STATIC_MESH, group="", tags=[], metadata={}):
         """
         Overrides super method.
         There are 3 different primitive lists for meshes, colliders and socket
@@ -167,7 +168,7 @@ class StaticMesh3d(Asset3d):
         :keyword tags: (list) tags of the Asset
         :keyword metadata: (dict) asset metadata  (NOT USED YET!!)
         """
-        Asset3d.__init__(self, name, primitives, type, group, tags, metadata)
+        Asset3d.__init__(self, name, unique_name, primitives, type, group, tags, metadata)
         self.meshes = [primitive for primitive in self.primitives if primitive.role == Primitive3dRoles.MESH]
         self.colliders = [primitive for primitive in self.primitives if primitive.role == Primitive3dRoles.COLLIDER]
         self.sockets = [primitive for primitive in self.primitives if primitive.role == Primitive3dRoles.SOCKET]
@@ -359,6 +360,19 @@ class Dcc:
         self.scene_tree_root = self.query_current_scene_tree()   # Build the assets hierarchy from the scene
         self.scene = Scene3d(self.scene_name, self.scene_tree_root, self.scene_filepath)  # Create and store a Scene3d object
         self.scene_file_type = ""  # Scene file extension
+
+    @staticmethod
+    def make_unique_name(name):
+        """
+        Make a collection name as unique, removing any specific substring added by the DCC to avoid duplicates
+        :param name:
+        :return: (string) Unique name
+        """
+
+        raise NotImplementedError("'make_unique_collection_name()' method must be implemented in a child class"
+                                  "\n\n*** Example: ***"
+                                  "\ndef make_unique_name(name):"
+                                  "\n\treturn name.split('.')[0]")
 
     def _scene_file_exists(self, filepath):
         """

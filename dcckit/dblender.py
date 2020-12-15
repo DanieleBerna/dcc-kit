@@ -32,6 +32,10 @@ class BlenderDcc(dcore.Dcc):
         """
         return bpy.context
 
+    @staticmethod
+    def make_unique_name(name):
+        return name.split('.')[0]
+
     def open_scene_file(self, filepath):
         if self._scene_file_exists(filepath):
             bpy.ops.wm.open_mainfile(filepath=filepath)
@@ -65,7 +69,6 @@ class BlenderDcc(dcore.Dcc):
                 scene_node.type = dcore.SceneNodeTypes.ROOT
                 scene_node.name = ROOT
             elif root.name.lower() in DCC_RESERVED_LIST:
-                print(root.name)
                 scene_node.type = dcore.SceneNodeTypes.RESERVED
                 scene_node.name = "-reserved-"
             elif root.name.lower() == IGNORE:
@@ -73,14 +76,14 @@ class BlenderDcc(dcore.Dcc):
                 scene_node.name = IGNORE
             elif root.name[0] == TAG_PREFIX:
                 scene_node.type = dcore.SceneNodeTypes.TAG
-                scene_node.name = root.name[1:]
+                scene_node.name = BlenderDcc.make_unique_name(root.name[1:])
                 tags.append(scene_node.name)
             elif root.name[0] == COMMENT_PREFIX:
                 scene_node.type = dcore.SceneNodeTypes.COMMENT
-                scene_node.name = root.name[1:]
+                scene_node.name = BlenderDcc.make_unique_name(root.name[1:])
             elif root.name[0] == GROUP_PREFIX:
                 scene_node.type = dcore.SceneNodeTypes.GROUP
-                scene_node.name = root.name[1:]
+                scene_node.name = BlenderDcc.make_unique_name(root.name[1:])
                 group = scene_node.name
                 tags.append(".")
             else:
@@ -109,8 +112,9 @@ class BlenderDcc(dcore.Dcc):
 
                         if is_valid:
                             temp_primitives.append(dcore.Primitive3d(obj[1], prim_name, primitive_type, prim_vertex_count))
-                scene_node.content = dcore.StaticMesh3d(name=scene_node.name, type=dcore.Asset3dTypes.STATIC_MESH,
-                                                        group=group, tags=tags, primitives=temp_primitives)
+                scene_node.content = dcore.StaticMesh3d(name=scene_node.name, unique_name=BlenderDcc.make_unique_name(scene_node.name),
+                                                        type=dcore.Asset3dTypes.STATIC_MESH, group=group, tags=tags,
+                                                        primitives=temp_primitives)
 
             if root.children:
                 for child in root.children:
