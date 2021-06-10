@@ -126,17 +126,17 @@ class BlenderDcc(dcore.Dcc):
         return tree_root
 
     def export_asset(self, asset_name, file_name="", destination_folder="./", file_format="fbx", options={}):
-        objects_to_export, full_path = self._setup_export_asset_task(asset_name, file_name=file_name, destination_folder=destination_folder,
+        objects_to_export, full_path, metadata = self._setup_export_asset_task(asset_name, file_name=file_name, destination_folder=destination_folder,
                                                             file_format=file_format, options=options)
 
         # This line is needed to remove any unwanted '.[0-9][0-9][0-9]' string present in asset name due to Blender handling of duplicated collections name
         full_path = os.path.join((os.path.dirname(full_path)), os.path.splitext(os.path.basename(full_path))[0].split('.')[0]+os.path.splitext(os.path.basename(full_path))[1])
         if objects_to_export:
             override_context = self.context.copy()
-            """for obj in objects_to_export:
-                if metadata:
-                    for key in metadata.keys():
-                        obj[key] = metadata[key]"""
+            """ Adds metadata """
+            for obj in objects_to_export:
+                for k, v in metadata.items():
+                    obj[k] = v
 
             override_context['selected_objects'] = objects_to_export
 

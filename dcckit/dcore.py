@@ -343,8 +343,8 @@ class Scene3d:
                 if tags is not None:
                     return tags
 
-    def freeze_metadata(self):
-        return {"work_file": os.path.join(self.folder, self.name) + ".blend", "artist": getpass.getuser(),
+    def get_metadata(self):
+        return {"work_file": self.filepath, "artist": getpass.getuser(),
                 "last_modified_date": datetime.now().strftime("%H:%M")}
 
     def write_metadata_on_object(self, object, metadata_dict):
@@ -480,7 +480,7 @@ class Dcc:
             objects_to_export = meshes_to_export + colliders_to_export + sockets_to_export
 
         logging.info(f"Exporting {asset_to_export.name} with name {asset_name} in {destination_folder}")
-        return objects_to_export, full_path
+        return objects_to_export, full_path, self.scene.get_metadata()
 
     def export_asset(self, asset_name, file_name="", destination_folder="./", file_format="fbx", options={}):
         raise NotImplementedError("'export_asset()' method must be implemented in a Dcc child class"
