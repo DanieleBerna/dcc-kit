@@ -23,7 +23,7 @@ COMMENT_PREFIX = '#'  # Used just for organization purposes in the scene and it 
 TAG_PREFIX = '@'  # Used for adding tags/words to the asset name. It never affects folder structure at export time
 GROUP_PREFIX = '_'  # A Group is similar to a tag but Group name can be included in export folder structure
 IGNORE = 'ignore'  # This is a special name used to exclude all its content from assets exporting
-ROOT = "root"  # Name given to the root node of built scene tree
+ROOT = "tree_root"  # Name given to the root node of built scene tree
 DCC_ROOTS_LIST = ('Master Collection',)  # list of names used by DCCs to call the root element in a scene hierarchy
 DCC_RESERVED_LIST = ('cutters',)  # list of reserved names used by DCCs for hierarchy elements that shouldn't be considered
 
@@ -33,7 +33,7 @@ class Primitive3dRoles(Enum):
     MESH = 1
     COLLIDER = 2
     SOCKET = 3
-    BONE = 4
+    SKELETON = 4
     EMPTY = 5
 
 
@@ -71,7 +71,7 @@ class Asset3d:
     An Asset3D is composed by one or more Primitive3d
     """
 
-    def __init__(self, name="", unique_name="", primitives=[], type=Asset3dTypes.STATIC_MESH, group="", tags=[], metadata={}):
+    def __init__(self, name="", unique_name="", primitives=[], group="", tags=[], metadata={}):
         """
         :keyword param name: (str) assets name
         :keyword param primitives: (list) Primitives3d objects composing the asset
@@ -83,17 +83,27 @@ class Asset3d:
         self.name = name
         self.unique_name = unique_name
         self.primitives = primitives
-        self.type = type
         self.group = group
         self.tags = tags
         self.metadata = metadata
         self.vertex_count = self.query_vertex_count()
 
     def __repr__(self):
-        output = f"\n\tAsset: {self.name}\n\tType: {self.type}\n\tGroup: {self.group}\n"
+        output = f"\n\tAsset: {self.name}\n\tGroup: {self.group}\n"
         for prim in self.primitives:
             output = output + repr(prim)
         return output
+
+    def query_primitives(self, types_list=None):
+        """
+        Return a list of asset's primitives, given their types or all if types list is not provided
+        :param types_list: a list of Primitive3dRoles values
+        :return:
+        """
+        if types_list is None:
+            return self.primitives
+        else:
+            return [primitive for primitive in self.primitives if primitive.role in types_list]
 
     def query_vertex_count(self):
         count = 0
@@ -157,7 +167,7 @@ class StaticMesh3d(Asset3d):
 
     engine_prefix = "SM_"
 
-    def __init__(self, name="", unique_name="", primitives=[], type=Asset3dTypes.STATIC_MESH, group="", tags=[], metadata={}):
+    def __init__(self, name="", unique_name="", primitives=[], group="", tags=[], metadata={}):
         """
         Overrides super method.
         There are 3 different primitive lists for meshes, colliders and socket
@@ -168,10 +178,11 @@ class StaticMesh3d(Asset3d):
         :keyword tags: (list) tags of the Asset
         :keyword metadata: (dict) asset metadata  (NOT USED YET!!)
         """
-        Asset3d.__init__(self, name, unique_name, primitives, type, group, tags, metadata)
-        self.meshes = [primitive for primitive in self.primitives if primitive.role == Primitive3dRoles.MESH]
-        self.colliders = [primitive for primitive in self.primitives if primitive.role == Primitive3dRoles.COLLIDER]
-        self.sockets = [primitive for primitive in self.primitives if primitive.role == Primitive3dRoles.SOCKET]
+        Asset3d.__init__(self, name, unique_name, primitives, group, tags, metadata)
+        self.type = Asset3dTypes.STATIC_MESH
+        self.meshes = self.query_primitives([Primitive3dRoles.MESH])
+        self.colliders = self.query_primitives([Primitive3dRoles.COLLIDER])
+        self.sockets = self.query_primitives([Primitive3dRoles.SOCKET])
 
     def __repr__(self):
         output = f"\n\tAsset: {self.name}\n\tType: {self.type}\n\tGroup: {self.group}\n"
@@ -193,6 +204,51 @@ class StaticMesh3d(Asset3d):
         to the full name.
         """
         return f"SM_{super().compose_tagged_name()}"
+
+
+class SkeletalMesh3d(Asset3d):
+    """
+    Extends Asset3d in order to better represent a StaticMesh.
+    It is composed by one or more Primitive3d of mesh type
+    and it could have some colliders and sockets
+    """
+
+    engine_prefix = "SK_"
+
+    def __init__(self, name="", unique_name="", primitives=[], group="", tags=[], metadata={}):
+        """
+        Overrides super method.
+        There are 3 different primitive lists for meshes, colliders and socket
+        :keyword param name: (str) assets name
+        :keyword param primitives: (list) Primitives3d objects composing the asset
+        :keyword param type: (Asset3dTypes) asset type
+        :keyword group: (str) group to which the object belongs
+        :keyword tags: (list) tags of the Asset
+        :keyword metadata: (dict) asset metadata  (NOT USED YET!!)
+        """
+        Asset3d.__init__(self, name, unique_name, primitives, group, tags, metadata)
+        self.type = Asset3dTypes.SKELETAL_MESH
+        self.meshes = [primitive for primitive in self.primitives if primitive.role == Primitive3dRoles.MESH]
+        self.bones = [primitive for primitive in self.primitives if primitive.role == Primitive3dRoles.SKELETON]
+        self.sockets = [primitive for primitive in self.primitives if primitive.role == Primitive3dRoles.SOCKET]
+
+    def __repr__(self):
+        output = f"\n\tAsset: {self.name}\n\tType: {self.type}\n\tGroup: {self.group}\n"
+        output = output + f"\n\tMeshes:\n"
+        for mesh in self.meshes:
+            output = output + repr(mesh)
+        output = output + f"\n\tSockets:\n"
+        for socket in self.sockets:
+            output = output + repr(socket)
+        return output
+
+    def compose_tagged_name(self):  # DEPRECATED
+        """
+        Overrides super method.
+        Build full name for the file that must be exported, adding StaticMesh prefix (Unreal Engine style)
+        to the full name.
+        """
+        return f"SK_{super().compose_tagged_name()}"
 
 
 class SceneNodeTypes(Enum):
@@ -347,7 +403,8 @@ class Scene3d:
         return {"work_file": self.filepath, "artist": getpass.getuser(),
                 "last_modified_date": datetime.now().strftime("%H:%M")}
 
-    def write_metadata_on_object(self, object, metadata_dict):
+    @staticmethod
+    def write_metadata_on_object(object, metadata_dict):
         return True
 
 
@@ -430,6 +487,8 @@ class Dcc:
         :return: (bool)
         """
         asset_to_export = self.scene.search_asset_by_name(asset_name)  # Get the desired asset from the Scene
+        print("sono dentro alla import")
+        print(asset_to_export)
         if asset_to_export is None:
             logging.warning(f"Asset is invalid or doesn't exist: {asset_name}")
             return False
@@ -461,6 +520,8 @@ class Dcc:
 
         if asset_to_export.type == Asset3dTypes.STATIC_MESH:
             engine_prefix = StaticMesh3d.engine_prefix
+        elif asset_to_export.type == Asset3dTypes.SKELETAL_MESH:
+            engine_prefix = SkeletalMesh3d.engine_prefix
         else:
             engine_prefix = ""
 
@@ -471,13 +532,12 @@ class Dcc:
             except IOError:
                 return False
 
-        if asset_to_export.type == Asset3dTypes.STATIC_MESH:
-            meshes_to_export = [mesh.data for mesh in asset_to_export.meshes]
-            if options['export_colliders']:
-                colliders_to_export = [collider.data for collider in asset_to_export.colliders]
-            if options['export_sockets']:
-                sockets_to_export = [socket.data for socket in asset_to_export.sockets]
-            objects_to_export = meshes_to_export + colliders_to_export + sockets_to_export
+        primitive_types = [Primitive3dRoles.MESH, Primitive3dRoles.SKELETON]
+        if options['export_colliders']:
+            primitive_types.append(Primitive3dRoles.COLLIDER)
+        if options['export_sockets']:
+            primitive_types.append(Primitive3dRoles.SOCKET)
+        objects_to_export = [primitive.data for primitive in asset_to_export.query_primitives(primitive_types)]
 
         logging.info(f"Exporting {asset_to_export.name} with name {asset_name} in {destination_folder}")
         return objects_to_export, full_path, self.scene.get_metadata()

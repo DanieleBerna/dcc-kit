@@ -91,8 +91,9 @@ class BlenderDcc(dcore.Dcc):
                 scene_node.name = root.name
 
                 temp_primitives = []
+                asset_type = dcore.Asset3dTypes.STATIC_MESH
                 for obj in root.all_objects.items():
-                    if not isinstance(obj, bpy.types.Collection) and obj[1].type in ("EMPTY", "MESH"):
+                    if not isinstance(obj, bpy.types.Collection) and obj[1].type in ("EMPTY", "MESH", "ARMATURE"):
                         is_valid = False
                         prim_vertex_count = 0
                         prim_data = obj[1]
@@ -109,12 +110,22 @@ class BlenderDcc(dcore.Dcc):
                             primitive_type = dcore.Primitive3dRoles.MESH
                             prim_vertex_count = len(prim_data.data.vertices)
                             is_valid = True
+                        elif prim_data.type == "ARMATURE":
+                            primitive_type = dcore.Primitive3dRoles.SKELETON
+                            prim_vertex_count = 0
+                            is_valid = True
+                            asset_type = dcore.Asset3dTypes.SKELETAL_MESH
 
                         if is_valid:
                             temp_primitives.append(dcore.Primitive3d(obj[1], prim_name, primitive_type, prim_vertex_count))
-                scene_node.content = dcore.StaticMesh3d(name=scene_node.name, unique_name=BlenderDcc.make_unique_name(scene_node.name),
-                                                        type=dcore.Asset3dTypes.STATIC_MESH, group=group, tags=tags,
-                                                        primitives=temp_primitives)
+                print(f"Query of asset: {scene_node.name}")
+                print(temp_primitives)
+                if asset_type == dcore.Asset3dTypes.STATIC_MESH:
+                    scene_node.content = dcore.StaticMesh3d(name=scene_node.name, unique_name=BlenderDcc.make_unique_name(scene_node.name),
+                                                            group=group, tags=tags, primitives=temp_primitives)
+                elif dcore.Asset3dTypes.SKELETAL_MESH:
+                    scene_node.content = dcore.SkeletalMesh3d(name=scene_node.name, unique_name=BlenderDcc.make_unique_name(scene_node.name),
+                                                              group=group, tags=tags, primitives=temp_primitives)
 
             if root.children:
                 for child in root.children:
@@ -126,9 +137,13 @@ class BlenderDcc(dcore.Dcc):
         return tree_root
 
     def export_asset(self, asset_name, file_name="", destination_folder="./", file_format="fbx", options={}):
+        print("preparo il task")
         objects_to_export, full_path, metadata = self._setup_export_asset_task(asset_name, file_name=file_name, destination_folder=destination_folder,
                                                             file_format=file_format, options=options)
 
+        print(objects_to_export)
+        print(full_path)
+        print(metadata)
         # This line is needed to remove any unwanted '.[0-9][0-9][0-9]' string present in asset name due to Blender handling of duplicated collections name
         full_path = os.path.join((os.path.dirname(full_path)), os.path.splitext(os.path.basename(full_path))[0].split('.')[0]+os.path.splitext(os.path.basename(full_path))[1])
         if objects_to_export:
@@ -140,6 +155,8 @@ class BlenderDcc(dcore.Dcc):
 
             override_context['selected_objects'] = objects_to_export
 
+            print("arrivo prima dell'export FBX")
+            print(objects_to_export)
             bpy.ops.export_scene.fbx(override_context, filepath=full_path,
                                      path_mode='RELATIVE',
                                      use_selection=True,
