@@ -137,7 +137,6 @@ class BlenderDcc(dcore.Dcc):
         return tree_root
 
     def export_asset(self, asset_name, file_name="", destination_folder="./", file_format="fbx", options={}):
-        print("preparo il task")
         objects_to_export, full_path, metadata = self._setup_export_asset_task(asset_name, file_name=file_name, destination_folder=destination_folder,
                                                             file_format=file_format, options=options)
 
