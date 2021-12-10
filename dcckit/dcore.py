@@ -25,7 +25,7 @@ GROUP_PREFIX = '_'  # A Group is similar to a tag but Group name can be included
 IGNORE = 'ignore'  # This is a special name used to exclude all its content from assets exporting
 ROOT = "tree_root"  # Name given to the root node of built scene tree
 DCC_ROOTS_LIST = ('Master Collection',)  # list of names used by DCCs to call the root element in a scene hierarchy
-DCC_RESERVED_LIST = ('cutters', 'shapekeys', '$base', '$export')  # list of reserved names used by DCCs for hierarchy elements that shouldn't be considered for export
+DCC_RESERVED_LIST = ('cutters', 'shapekeys', '$base', '$export', '$clothvolumes')  # list of reserved names used by DCCs for hierarchy elements that shouldn't be considered for export
 
 
 class Primitive3dRoles(Enum):

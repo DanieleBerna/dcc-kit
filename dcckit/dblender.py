@@ -169,6 +169,7 @@ class BlenderDcc(dcore.Dcc):
                                      use_tspace=False,
                                      use_custom_props=True,
                                      bake_anim=False,
+                                     add_leaf_bones=False,
                                      use_metadata=True)
 
 
