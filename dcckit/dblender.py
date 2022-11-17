@@ -65,7 +65,6 @@ class BlenderDcc(dcore.Dcc):
             if tags:
                 scene_node.tags = tags[:]
 
-            print(f"il nome della collection attuale: {root.name.rstrip()}")
             if root.name.rstrip() in DCC_ROOTS_LIST:
                 scene_node.type = dcore.SceneNodeTypes.ROOT
                 scene_node.name = ROOT
@@ -119,7 +118,6 @@ class BlenderDcc(dcore.Dcc):
 
                         if is_valid:
                             temp_primitives.append(dcore.Primitive3d(obj[1], prim_name, primitive_type, prim_vertex_count))
-                print(f"Query of asset PORCO: {scene_node.name}")
                 print(temp_primitives)
                 if asset_type == dcore.Asset3dTypes.STATIC_MESH:
                     scene_node.content = dcore.StaticMesh3d(name=scene_node.name, unique_name=BlenderDcc.make_unique_name(scene_node.name),
