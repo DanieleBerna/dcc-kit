@@ -118,7 +118,6 @@ class BlenderDcc(dcore.Dcc):
 
                         if is_valid:
                             temp_primitives.append(dcore.Primitive3d(obj[1], prim_name, primitive_type, prim_vertex_count))
-                print(f"Query of asset: {scene_node.name}")
                 print(temp_primitives)
                 if asset_type == dcore.Asset3dTypes.STATIC_MESH:
                     scene_node.content = dcore.StaticMesh3d(name=scene_node.name, unique_name=BlenderDcc.make_unique_name(scene_node.name),
