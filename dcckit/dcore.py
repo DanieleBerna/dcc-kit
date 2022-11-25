@@ -213,7 +213,7 @@ class SkeletalMesh3d(Asset3d):
     and it could have some colliders and sockets
     """
 
-    engine_prefix = "SK_"
+    engine_prefix = "SKM_"
 
     def __init__(self, name="", unique_name="", primitives=[], group="", tags=[], metadata={}):
         """
