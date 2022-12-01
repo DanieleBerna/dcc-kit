@@ -10,7 +10,8 @@ Dcc class has basic methods and attributes: for specific software the class need
 import os
 import getpass
 import logging
-from datetime import datetime
+import datetime
+import platform
 from enum import Enum
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
@@ -399,10 +400,6 @@ class Scene3d:
                 if tags is not None:
                     return tags
 
-    def get_metadata(self):
-        return {"work_file": self.filepath, "artist": getpass.getuser(),
-                "last_modified_date": datetime.now().strftime("%H:%M")}
-
     @staticmethod
     def write_metadata_on_object(object, metadata_dict):
         return True
@@ -476,6 +473,19 @@ class Dcc:
         raise NotImplementedError("'query_current_scene_tree()' method must be implemented in a Dcc child class"
                                   "\nand return the SceneNode object representing the scene hierarchy root")
 
+    def _update_metadata(self):
+        """
+        Update metadata.
+        :return: (dict)
+        """
+        artist_name = getpass.getuser()
+        artist_machine = platform.node()
+        timestamp = (datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
+        sourcefile = os.path.join(self.scene_filepath, self.scene_name)
+        metadata = {"Artist": artist_name, "Machine": artist_machine, "Timestamp": timestamp, "RawFile": sourcefile}
+
+        return metadata
+
     def _setup_export_asset_task(self, asset_name, file_name="", destination_folder="./", file_format="fbx", options={}):
         """
         Override this in child class for specific DCCs
@@ -487,8 +497,6 @@ class Dcc:
         :return: (bool)
         """
         asset_to_export = self.scene.search_asset_by_name(asset_name)  # Get the desired asset from the Scene
-        print("sono dentro alla import")
-        print(asset_to_export)
         if asset_to_export is None:
             logging.warning(f"Asset is invalid or doesn't exist: {asset_name}")
             return False
@@ -537,10 +545,12 @@ class Dcc:
             primitive_types.append(Primitive3dRoles.COLLIDER)
         if options['export_sockets']:
             primitive_types.append(Primitive3dRoles.SOCKET)
+
+        metadata = self._update_metadata()
         objects_to_export = [primitive.data for primitive in asset_to_export.query_primitives(primitive_types)]
 
         logging.info(f"Exporting {asset_to_export.name} with name {asset_name} in {destination_folder}")
-        return objects_to_export, full_path, self.scene.get_metadata()
+        return objects_to_export, full_path, metadata
 
     def export_asset(self, asset_name, file_name="", destination_folder="./", file_format="fbx", options={}):
         raise NotImplementedError("'export_asset()' method must be implemented in a Dcc child class"

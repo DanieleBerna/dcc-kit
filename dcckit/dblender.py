@@ -44,7 +44,7 @@ class BlenderDcc(dcore.Dcc):
             return False
 
     def query_current_scene_name(self):
-        return (bpy.path.basename(bpy.context.blend_data.filepath)).split('.')[0]
+        return bpy.path.basename(bpy.context.blend_data.filepath) #.split('.')[0]
 
     def query_current_scene_filepath(self):
         return os.path.dirname(bpy.context.blend_data.filepath)
@@ -118,7 +118,6 @@ class BlenderDcc(dcore.Dcc):
 
                         if is_valid:
                             temp_primitives.append(dcore.Primitive3d(obj[1], prim_name, primitive_type, prim_vertex_count))
-                print(temp_primitives)
                 if asset_type == dcore.Asset3dTypes.STATIC_MESH:
                     scene_node.content = dcore.StaticMesh3d(name=scene_node.name, unique_name=BlenderDcc.make_unique_name(scene_node.name),
                                                             group=group, tags=tags, primitives=temp_primitives)
@@ -139,22 +138,21 @@ class BlenderDcc(dcore.Dcc):
         objects_to_export, full_path, metadata = self._setup_export_asset_task(asset_name, file_name=file_name, destination_folder=destination_folder,
                                                             file_format=file_format, options=options)
 
-        print(objects_to_export)
-        print(full_path)
-        print(metadata)
         # This line is needed to remove any unwanted '.[0-9][0-9][0-9]' string present in asset name due to Blender handling of duplicated collections name
         full_path = os.path.join((os.path.dirname(full_path)), os.path.splitext(os.path.basename(full_path))[0].split('.')[0]+os.path.splitext(os.path.basename(full_path))[1])
         if objects_to_export:
             override_context = self.context.copy()
             """ Adds metadata """
             for obj in objects_to_export:
-                for k, v in metadata.items():
-                    obj[k] = v
+                # Clear old metadata
+                for k in list(obj.keys()):
+                    del obj[k]
+
+                for key, val in metadata.items():
+                    obj[key] = val
 
             override_context['selected_objects'] = objects_to_export
 
-            print("arrivo prima dell'export FBX")
-            print(objects_to_export)
             bpy.ops.export_scene.fbx(override_context, filepath=full_path,
                                      path_mode='RELATIVE',
                                      use_selection=True,
