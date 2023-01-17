@@ -22,11 +22,9 @@ Their main purpose is to define a role for an element of the hierarchy
 """
 COMMENT_PREFIX = '#'  # Used just for organization purposes in the scene and it never affects assets naming
 TAG_PREFIX = '@'  # Used for adding tags/words to the asset name. It never affects folder structure at export time
-GROUP_PREFIX = '_'  # A Group is similar to a tag but Group name can be included in export folder structure
+GROUP_PREFIX = '>'  # A Group is similar to a tag but Group name can be included in export folder structure
 IGNORE = 'ignore'  # This is a special name used to exclude all its content from assets exporting
 ROOT = "tree_root"  # Name given to the root node of built scene tree
-DCC_ROOTS_LIST = ('Master Collection', 'Scene Collection')  # list of names used by DCCs to call the root element in a scene hierarchy
-DCC_RESERVED_LIST = ('cutters', 'shapekeys', '$base', '$export', '$clothvolumes')  # list of reserved names used by DCCs for hierarchy elements that shouldn't be considered for export
 
 
 class Primitive3dRoles(Enum):
@@ -72,7 +70,7 @@ class Asset3d:
     An Asset3D is composed by one or more Primitive3d
     """
 
-    def __init__(self, name="", unique_name="", primitives=[], group="", tags=[], metadata={}):
+    def __init__(self, name="", display_name="", primitives=[], group="", tags=[], metadata={}):
         """
         :keyword param name: (str) assets name
         :keyword param primitives: (list) Primitives3d objects composing the asset
@@ -81,12 +79,12 @@ class Asset3d:
         :keyword tags: (list) tags of the Asset
         :keyword metadata: (dict) asset metadata (NOT USED YET!!)
         """
-        self.name = name
-        self.unique_name = unique_name
-        self.primitives = primitives
-        self.group = group
-        self.tags = tags
-        self.metadata = metadata
+        self.name = name  # Unique name
+        self.display_name = display_name  # User friendly name
+        self.primitives = primitives  # Primitives composing the asset
+        self.group = group  # Optional asset group
+        self.tags = tags  # Optional asset tags
+        self.metadata = metadata  # Asset metadata
         self.vertex_count = self.query_vertex_count()
 
     def __repr__(self):
@@ -112,7 +110,7 @@ class Asset3d:
             count = count + p.vertex_count
         return count
 
-    def compose_tagged_name(self):  # DEPRECATED
+    def DELETEMEFROMHERE_compose_tagged_name(self):  # DEPRECATED
         """ Build the name of the assets with tags and groups """
         tags = []
         asset_name = self.name.split('.')[0]
@@ -127,27 +125,30 @@ class Asset3d:
         tagged_name = "_".join(tags) + asset_name
         return tagged_name
 
-    def compose_full_name(self, scene_name="", use_tags=True):
+    def DELETEMEFROMHERE_compose_full_name(self, scene_name="", use_tags=True):
         """
-        Build full name for the file that must be exported
+        Build the full name for the asset, including any Tags and Group, to be used for export too
         :param scene_name:
         :param use_tags:
         :return:
         """
         # asset_name = self.name.split('.')[0]
-        asset_name = self.unique_name
+        asset_name = self.display_name
 
         if use_tags:
-            tags = []
+            # tags = []
+            tags = self.tags[:]
             try:
-                tags = self.tags[:]
                 group_index = self.tags.index(".")
-                tags[group_index] = self.group
+                if self.group and self.group != "":
+                    tags[group_index] = self.group
+                else:
+                    tags.pop(group_index)
             except ValueError:
                 pass
             if tags:
                 tags.append("")
-            asset_name = "_".join(tags) + asset_name
+                asset_name = "_".join(tags) + asset_name
 
         else:
             if self.group:
@@ -267,14 +268,64 @@ class SceneNode:
     """
         A SceneNode is the basic element of a Scene hierarchy
     """
-    def __init__(self, name="", type=SceneNodeTypes.COMMENT, children=[], content=[], parent=None):
+    def __init__(self, name="", display_name="", type=SceneNodeTypes.COMMENT, children=[], data=[], parent=None):
         self.name = name
+        self.display_name = display_name
         self.type = type
         self.children = children
-        self.content = content
+        self.data = data
         self.parent = parent
         self.tags = []
         self.group = ""
+
+    def __repr__(self):
+        return self.name
+
+    def print_node(self, indent=0):
+        tabs = ""
+        for i in range(indent):
+            tabs = tabs + "\t"
+        print(tabs+self.name)
+        if self.children:
+            for c in self.children:
+                c.print_node(indent+1)
+
+    def find_by_name(self, node_name):
+        if self.name == node_name:
+            return self
+        else:
+            if self.children:
+                for c in self.children:
+                    node = c.find(node_name)
+                    if node:
+                        return node
+            else:
+                return None
+
+    def get_path(self, path=[]):
+        if self.parent:
+            path.append(self.parent)
+            self.parent.get_path(path)
+            return path
+        else:
+            return None
+
+    def find_assets_with_labels(self, finds=[], use_ignore=True, use_tags=True):
+        
+        if (use_ignore and self.type == SceneNodeTypes.IGNORE) or self.type == SceneNodeTypes.RESERVED:  # return immediately if the 'ignore' element is found
+            return assets, labels
+
+        if self.type == SceneNodeTypes.ASSET and self.data.primitives:
+            assets.append((self, labels))
+            return assets, labels
+        else:
+            if self.type == SceneNodeTypes.GROUP:
+                labels.append(self.display_name)
+            elif self.type == SceneNodeTypes.TAG and use_tags:
+                labels.append(self.display_name)
+            for child in self.children:
+                assets = child.find_assets_with_labels(assets=assets[:], labels=labels[:], use_ignore=use_ignore, use_tags=use_tags)
+            return assets, labels
 
 
 class Scene3d:
@@ -297,7 +348,7 @@ class Scene3d:
             output = output + repr(asset)
         return output
 
-    def search_all_assets(self, node=None, assets=[], use_ignore=True, non_empty_only=True):
+    def search_all_assets(self, node=None, assets=[], use_ignore=True, non_empty_only=True): # SOON DEPRECATED?
         """
         Return a list of all valid Assets in the scene tree
         :keyword param node: (SceneNode) the tree node from where the recursive search must start
@@ -310,15 +361,24 @@ class Scene3d:
         if (use_ignore and node.type == SceneNodeTypes.IGNORE) or node.type == SceneNodeTypes.RESERVED:  # return immediately if the 'ignore' element is found
             return assets
 
-        if node.type == SceneNodeTypes.ASSET and node.content.primitives:
-            assets.append(node.content)
+        if node.type == SceneNodeTypes.ASSET and node.data.primitives:
+            assets.append(node.data)
             return assets
         else:
             for child in node.children:
                 assets = self.search_all_assets(node=child, assets=assets[:])
             return assets
 
-    def search_asset_by_name(self, asset_name, node=None, use_ignore=True, non_empty_only=True):
+    def get_all_assets(self, use_ignore=True, use_tags=True):
+        """
+        Return a list of all valid Assets in the scene tree
+        :keyword param node: (SceneNode) the tree node from where the recursive search must start
+        :keyword param assets: (list) the assets list that needs to be filled during search
+        :keyword param use_ignore: (bool) do not include 'ignore' branch in search
+        """
+        assets,self.tree.find_assets_with_labels(use_ignore=use_ignore, use_tags=use_tags)
+
+    def search_asset_by_name(self, asset_name, node=None, use_ignore=True, visited_nodes=[], non_empty_only=True):
         """
         Search and return an Assets given its name from the scene tree
         :param asset_name: (str) the name of the asset that must be searched
@@ -331,8 +391,8 @@ class Scene3d:
         if (use_ignore and node.type == SceneNodeTypes.IGNORE) or node.type == SceneNodeTypes.RESERVED:  # return immediately if the 'ignore' element is found
             return
 
-        if node.name == asset_name and node.type == SceneNodeTypes.ASSET and node.content.primitives:
-            return node.content
+        if node.name == asset_name and node.type == SceneNodeTypes.ASSET and node.data.primitives:
+            return node.data
         else:
             asset = None
             for child in node.children:
@@ -349,7 +409,7 @@ class Scene3d:
         if node is None:
             node = self.tree
         if node.name == group_name and node.type == SceneNodeTypes.GROUP:
-            return [c.content for c in node.children if c.type == SceneNodeTypes.ASSET and node.content.primitives]
+            return [c.data for c in node.children if c.type == SceneNodeTypes.ASSET and node.data.primitives]
         else:
             assets = None
             for child in node.children:
@@ -409,16 +469,18 @@ class Dcc:
     """Class for a generic DCC software"""
 
     def __init__(self):
-        self.scene_name = self.query_current_scene_name()  # Get the currently opened scene name from scene file
-        self.scene_filepath = self.query_current_scene_filepath()  # Get the currently opened scene filepath
-        self.scene_tree_root = self.query_current_scene_tree()   # Build the assets hierarchy from the scene
-        self.scene = Scene3d(self.scene_name, self.scene_tree_root, self.scene_filepath)  # Create and store a Scene3d object
+        _scene_name = self.query_current_file_name()  # Get the currently opened scene name from scene file
+        _scene_filepath = self.query_current_file_path()  # Get the currently opened scene filepath
+        _scene_tree_root = self.query_current_scene_tree()   # Build the assets hierarchy from the scene
+        print("SCENE TREE:")
+        _scene_tree_root.print_node()
+        self.scene = Scene3d(_scene_name, _scene_tree_root, _scene_filepath)  # Create and store a Scene3d object
         self.scene_file_type = ""  # Scene file extension
 
     @staticmethod
-    def make_unique_name(name):
+    def clean_name(name):
         """
-        Make a collection name as unique, removing any specific substring added by the DCC to avoid duplicates
+        Clean name, removing any specific substring added by the DCC to avoid duplicates or reserved characters
         :param name:
         :return: (string) Unique name
         """
@@ -460,11 +522,11 @@ class Dcc:
                                   "\tif self._scene_file_exists(filepath):\n"
                                   "\t\t  # Use specific dcc's api to open the file")
 
-    def query_current_scene_name(self):
+    def query_current_file_name(self):
         """ Override this in child class for specific DCCs"""
         return ""
 
-    def query_current_scene_filepath(self):
+    def query_current_file_path(self):
         """ Override this in child class for specific DCCs"""
         return ""
 
@@ -518,9 +580,14 @@ class Dcc:
         if options['create_subfolders']:
             if options['subfolder_groups_only']:
                 if asset_to_export.group:
+                    print(f"esporto un asset: {asset_name} nel fine chiamato {file_name} con la cartella di gruppo")
+                    print(f"Il suo group sarebbe: {asset_to_export.group}")
                     group_tags = self.scene.search_group_tags_by_name(asset_to_export.group)
+                    print(f"I tag del gruppo sarebbero: {group_tags}")
                     tagged_group_name = "_".join(group_tags+[asset_to_export.group])
+                    print(f"Il gruppo coi tag davanti sarebbe: {tagged_group_name}")
                     destination_folder = os.path.join(destination_folder, scene_prefix + tagged_group_name)
+                    print(f"La cartella di export sarebbe: {destination_folder}")
                 else:
                     destination_folder = os.path.join(destination_folder, scene_prefix + file_name)
             else:

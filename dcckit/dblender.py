@@ -10,11 +10,15 @@ import re
 import bpy
 
 from . import dcore
-from .dcore import DCC_ROOTS_LIST, DCC_RESERVED_LIST, ROOT, IGNORE, TAG_PREFIX, COMMENT_PREFIX, GROUP_PREFIX
+from .dcore import ROOT, IGNORE, TAG_PREFIX, COMMENT_PREFIX, GROUP_PREFIX
 
 
 class BlenderDcc(dcore.Dcc):
     """Extends Dcc class to handle a Blender scene """
+    DCC_ROOTS_LIST = ('Master Collection', 'Scene Collection')  # list of names used by DCCs to call the root element in a scene hierarchy
+    DCC_RESERVED_LIST = ('cutters', 'shapekeys', '$base', '$export', '$clothvolumes')  # list of reserved names used by DCCs for hierarchy elements that shouldn't be considered for export
+    RESERVED_CHARACTERS = ('@', '#', '>')
+
     def __init__(self, context=None):
         if context is not None:
             self.context = context
@@ -33,8 +37,16 @@ class BlenderDcc(dcore.Dcc):
         return bpy.context
 
     @staticmethod
-    def make_unique_name(name):
+    def make_unique_name(name): # DEPRECATED
         return name.split('.')[0]
+
+    @staticmethod
+    def clean_name(name):
+        # Remove any trailing number
+        name = name.split('.')[0]
+        if name.startswith(BlenderDcc.RESERVED_CHARACTERS):
+            name = name[1:]
+        return name
 
     def open_scene_file(self, filepath):
         if self._scene_file_exists(filepath):
@@ -43,13 +55,14 @@ class BlenderDcc(dcore.Dcc):
         else:
             return False
 
-    def query_current_scene_name(self):
+    def query_current_file_name(self):
         return bpy.path.basename(bpy.context.blend_data.filepath) #.split('.')[0]
 
-    def query_current_scene_filepath(self):
+    def query_current_file_path(self):
         return os.path.dirname(bpy.context.blend_data.filepath)
 
     def query_current_scene_tree(self):
+        # prende la prima collection, root di tutto
         master_collection = self.context.scene.collection
 
         def recurse_scene_hierarchy(root, parent, group="", tags=[]):
@@ -62,36 +75,41 @@ class BlenderDcc(dcore.Dcc):
             scene_node = dcore.SceneNode()
             scene_node.children = []
             scene_node.parent = parent
-            if tags:
-                scene_node.tags = tags[:]
 
-            if root.name.rstrip() in DCC_ROOTS_LIST:
+            if root.name.rstrip() in BlenderDcc.DCC_ROOTS_LIST:
                 scene_node.type = dcore.SceneNodeTypes.ROOT
-                scene_node.name = ROOT
-            elif root.name.lower() in DCC_RESERVED_LIST:
+                scene_node.name = scene_node.display_name = ROOT
+
+            elif root.name.lower() in BlenderDcc.DCC_RESERVED_LIST:
                 scene_node.type = dcore.SceneNodeTypes.RESERVED
-                scene_node.name = "-reserved-"
+                scene_node.name = scene_node.display_name = "-reserved-"
+
             elif root.name.lower() == IGNORE:
                 scene_node.type = dcore.SceneNodeTypes.IGNORE
-                scene_node.name = IGNORE
+                scene_node.name = scene_node.display_name = IGNORE
+
             elif root.name[0] == TAG_PREFIX:
                 scene_node.type = dcore.SceneNodeTypes.TAG
-                scene_node.name = BlenderDcc.make_unique_name(root.name[1:])
-                tags.append(scene_node.name)
+                scene_node.name = root.name
+                scene_node.display_name = BlenderDcc.clean_name(root.name)
+
             elif root.name[0] == COMMENT_PREFIX:
                 scene_node.type = dcore.SceneNodeTypes.COMMENT
-                scene_node.name = BlenderDcc.make_unique_name(root.name[1:])
+                scene_node.name = root.name
+                scene_node.display_name = BlenderDcc.clean_name(root.name)
+
             elif root.name[0] == GROUP_PREFIX:
                 scene_node.type = dcore.SceneNodeTypes.GROUP
-                scene_node.name = BlenderDcc.make_unique_name(root.name[1:])
-                group = scene_node.name
-                tags.append(".")
+                scene_node.name = root.name
+                scene_node.display_name = BlenderDcc.clean_name(root.name)
+
             else:
                 scene_node.type = dcore.SceneNodeTypes.ASSET
                 scene_node.name = root.name
+                scene_node.display_name = BlenderDcc.clean_name(root.name)
 
                 temp_primitives = []
-                asset_type = dcore.Asset3dTypes.STATIC_MESH
+                asset_type = dcore.Asset3dTypes.STATIC_MESH  # By default starts assuming it's a Static Mesh
                 for obj in root.all_objects.items():
                     if not isinstance(obj, bpy.types.Collection) and obj[1].type in ("EMPTY", "MESH", "ARMATURE"):
                         is_valid = False
@@ -119,11 +137,11 @@ class BlenderDcc(dcore.Dcc):
                         if is_valid:
                             temp_primitives.append(dcore.Primitive3d(obj[1], prim_name, primitive_type, prim_vertex_count))
                 if asset_type == dcore.Asset3dTypes.STATIC_MESH:
-                    scene_node.content = dcore.StaticMesh3d(name=scene_node.name, unique_name=BlenderDcc.make_unique_name(scene_node.name),
-                                                            group=group, tags=tags, primitives=temp_primitives)
+                    scene_node.data = dcore.StaticMesh3d(name=scene_node.name, unique_name=scene_node.display_name,
+                                                         group=group, tags=tags, primitives=temp_primitives)
                 elif dcore.Asset3dTypes.SKELETAL_MESH:
-                    scene_node.content = dcore.SkeletalMesh3d(name=scene_node.name, unique_name=BlenderDcc.make_unique_name(scene_node.name),
-                                                              group=group, tags=tags, primitives=temp_primitives)
+                    scene_node.data = dcore.SkeletalMesh3d(name=scene_node.name, unique_name=scene_node.display_name,
+                                                           group=group, tags=tags, primitives=temp_primitives)
 
             if root.children:
                 for child in root.children:
