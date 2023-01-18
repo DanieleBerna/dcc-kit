@@ -8,6 +8,7 @@ Dcc class has basic methods and attributes: for specific software the class need
 """
 
 import os
+import re
 import getpass
 import logging
 import datetime
@@ -22,7 +23,8 @@ Their main purpose is to define a role for an element of the hierarchy
 """
 COMMENT_PREFIX = '#'  # Used just for organization purposes in the scene and it never affects assets naming
 TAG_PREFIX = '@'  # Used for adding tags/words to the asset name. It never affects folder structure at export time
-GROUP_PREFIX = '_'  # A Group is similar to a tag but Group name can be included in export folder structure
+GROUP_PREFIX = '*'  # A Group is similar to a tag but Group name can be included in export folder structure
+RESERVED_CHARACTERS_PATTERN = '['+COMMENT_PREFIX+TAG_PREFIX+GROUP_PREFIX+']'
 IGNORE = 'ignore'  # This is a special name used to exclude all its content from assets exporting
 ROOT = "tree_root"  # Name given to the root node of built scene tree
 DCC_ROOTS_LIST = ('Master Collection', 'Scene Collection')  # list of names used by DCCs to call the root element in a scene hierarchy
@@ -267,8 +269,9 @@ class SceneNode:
     """
         A SceneNode is the basic element of a Scene hierarchy
     """
-    def __init__(self, name="", type=SceneNodeTypes.COMMENT, children=[], content=[], parent=None):
+    def __init__(self, name="", display_name="", type=SceneNodeTypes.COMMENT, children=[], content=[], parent=None):
         self.name = name
+        self.display_name = display_name
         self.type = type
         self.children = children
         self.content = content
@@ -428,6 +431,55 @@ class Dcc:
                                   "\ndef make_unique_name(name):"
                                   "\n\treturn name.split('.')[0]")
 
+    def compose_asset_full_display_name(self, asset_node, use_tags=True, add_scene_name=False, collapse_groups=True):
+        """
+        Build full name for the file that must be exported
+        :param asset_node:
+        :param use_tags:
+        :param add_scene_name:
+        :return:
+        """
+        asset_name = asset_node.name
+
+        # scene name part
+        if add_scene_name:
+            scene_name = self.scene.name
+        else:
+            scene_name = ""
+
+        # tags part
+        if use_tags:
+            tags = asset_node.tags[:]
+            try:
+                group_index = asset_node.tags.index(".")
+                tags_before_group = tags[:group_index]
+                tags_after_group = tags[group_index+1:]
+            except:
+                tags_before_group = tags
+                tags_after_group = []
+            tags_before_string = "_".join(tags_before_group)
+            tags_after_string = "_".join(tags_after_group)
+        else:
+            tags_before_string = ""
+            tags_after_string = ""
+
+        if asset_node.group:
+            group_name = asset_node.group
+        else:
+            group_name = ""
+
+        final_asset_name = f"{scene_name}_{tags_before_string}_{group_name}_{tags_after_string}_{asset_name}"
+
+        if collapse_groups and group_name!="":
+            final_subfolder = f"{scene_name}_{tags_before_string}_{group_name}"
+        else:
+            final_subfolder = final_asset_name
+
+        final_asset_name = ((re.sub(RESERVED_CHARACTERS_PATTERN, "", final_asset_name)).replace("__", "_")).strip("_")
+        final_subfolder = ((re.sub(RESERVED_CHARACTERS_PATTERN, "", final_subfolder)).replace("__", "_")).strip("_")
+
+        return final_asset_name, final_subfolder
+
     def _scene_file_exists(self, filepath):
         """
         Check for given scene file existence
@@ -486,7 +538,7 @@ class Dcc:
 
         return metadata
 
-    def _setup_export_asset_task(self, asset_name, file_name="", destination_folder="./", file_format="fbx", options={}):
+    def _setup_export_asset_task_OLD(self, asset_name, file_name="", destination_folder="./", file_format="fbx", options={}):
         """
         Override this in child class for specific DCCs
         It export a given asset from the scene to a file
@@ -525,6 +577,58 @@ class Dcc:
                     destination_folder = os.path.join(destination_folder, scene_prefix + file_name)
             else:
                 destination_folder = os.path.join(destination_folder, scene_prefix + file_name)
+
+        if asset_to_export.type == Asset3dTypes.STATIC_MESH:
+            engine_prefix = StaticMesh3d.engine_prefix
+        elif asset_to_export.type == Asset3dTypes.SKELETAL_MESH:
+            engine_prefix = SkeletalMesh3d.engine_prefix
+        else:
+            engine_prefix = ""
+
+        full_path = os.path.join(destination_folder, engine_prefix+file_name + "." + file_format)
+        if not os.path.exists(destination_folder):
+            try:
+                os.makedirs(destination_folder)
+            except IOError:
+                return False
+
+        primitive_types = [Primitive3dRoles.MESH, Primitive3dRoles.SKELETON]
+        if options['export_colliders']:
+            primitive_types.append(Primitive3dRoles.COLLIDER)
+        if options['export_sockets']:
+            primitive_types.append(Primitive3dRoles.SOCKET)
+
+        metadata = self._update_metadata()
+        objects_to_export = [primitive.data for primitive in asset_to_export.query_primitives(primitive_types)]
+
+        logging.info(f"Exporting {asset_to_export.name} with name {asset_name} in {destination_folder}")
+        return objects_to_export, full_path, metadata
+
+    def _setup_export_asset_task(self, asset_name, file_name="", destination_folder="./", file_format="fbx", options={}):
+        """
+        Override this in child class for specific DCCs
+        It export a given asset from the scene to a file
+        :param asset_name: (str)
+        :param destination_folder: (str)
+        :param file_format: (str)
+        :param options: (dict) export options: 'scene_name_prefix', 'use_tags', 'create_subfolders', 'subfolder_groups_only'
+        :return: (bool)
+        """
+        asset_to_export = self.scene.search_asset_by_name(asset_name)  # Get the desired asset from the Scene
+        if asset_to_export is None:
+            logging.warning(f"Asset is invalid or doesn't exist: {asset_name}")
+            return False
+
+        """ Compose full name for the file that must be exported, depending on options """
+        if not file_name:  # if a file name is provided, skip name creation based on options
+            if options['use_tags']:
+                asset_name = asset_to_export.compose_tagged_name()
+            else:
+                asset_name = f"{asset_to_export.group}_{asset_to_export.name}"
+            if options['scene_name_prefix']:
+                asset_name = f"{self.scene.name}_{asset_name}"
+
+        """ Compose final path """
 
         if asset_to_export.type == Asset3dTypes.STATIC_MESH:
             engine_prefix = StaticMesh3d.engine_prefix

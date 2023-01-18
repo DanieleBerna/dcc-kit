@@ -76,14 +76,17 @@ class BlenderDcc(dcore.Dcc):
                 scene_node.name = IGNORE
             elif root.name[0] == TAG_PREFIX:
                 scene_node.type = dcore.SceneNodeTypes.TAG
-                scene_node.name = BlenderDcc.make_unique_name(root.name[1:])
+                scene_node.name = root.name
+                scene_node.display_name = BlenderDcc.make_unique_name(root.name[1:])
                 tags.append(scene_node.name)
             elif root.name[0] == COMMENT_PREFIX:
                 scene_node.type = dcore.SceneNodeTypes.COMMENT
-                scene_node.name = BlenderDcc.make_unique_name(root.name[1:])
+                scene_node.name = root.name
+                scene_node.display_name = BlenderDcc.make_unique_name(root.name[1:])
             elif root.name[0] == GROUP_PREFIX:
                 scene_node.type = dcore.SceneNodeTypes.GROUP
-                scene_node.name = BlenderDcc.make_unique_name(root.name[1:])
+                scene_node.name = root.name
+                scene_node.display_name = BlenderDcc.make_unique_name(root.name[1:])
                 group = scene_node.name
                 tags.append(".")
             else:
@@ -134,12 +137,32 @@ class BlenderDcc(dcore.Dcc):
         tree_root = recurse_scene_hierarchy(master_collection, None)
         return tree_root
 
+    def compose_asset_full_display_name(self, asset_node, use_tags=True, add_scene_name=False, collapse_groups=True):
+        """
+        Build full name for the file that must be exported
+        :param asset_node:
+        :param use_tags:
+        :param add_scene_name:
+        :return:
+        """
+        final_asset_name, final_asset_folder = super().compose_asset_full_display_name(asset_node, use_tags=use_tags, add_scene_name=add_scene_name, collapse_groups=collapse_groups)
+        blender_duplicated_collection_pattern = ".[0-9][0-9][0-9]"
+        final_asset_name = re.sub(blender_duplicated_collection_pattern, "", final_asset_name)
+        final_asset_name = (final_asset_name.replace("__", "_")).strip("_")
+
+        final_asset_folder = re.sub(blender_duplicated_collection_pattern, "", final_asset_folder)
+        final_asset_folder = (final_asset_folder.replace("__", "_")).strip("_")
+
+        print(f"Final asset name: {final_asset_name}")
+        print(f"Final folder name: {final_asset_folder}")
+        return final_asset_name, final_asset_folder
+
     def export_asset(self, asset_name, file_name="", destination_folder="./", file_format="fbx", options={}):
         objects_to_export, full_path, metadata = self._setup_export_asset_task(asset_name, file_name=file_name, destination_folder=destination_folder,
                                                             file_format=file_format, options=options)
 
         # This line is needed to remove any unwanted '.[0-9][0-9][0-9]' string present in asset name due to Blender handling of duplicated collections name
-        full_path = os.path.join((os.path.dirname(full_path)), os.path.splitext(os.path.basename(full_path))[0].split('.')[0]+os.path.splitext(os.path.basename(full_path))[1])
+        # full_path = os.path.join((os.path.dirname(full_path)), os.path.splitext(os.path.basename(full_path))[0].split('.')[0]+os.path.splitext(os.path.basename(full_path))[1])
         if objects_to_export:
             override_context = self.context.copy()
             """ Adds metadata """
