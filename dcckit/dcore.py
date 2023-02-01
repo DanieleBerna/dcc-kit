@@ -26,6 +26,7 @@ TAG_PREFIX = '@'  # Used for adding tags/words to the asset name. It never affec
 GROUP_PREFIX = '*'  # A Group is similar to a tag but Group name can be included in export folder structure
 RESERVED_CHARACTERS_PATTERN = '['+COMMENT_PREFIX+TAG_PREFIX+GROUP_PREFIX+']'
 IGNORE = 'ignore'  # This is a special name used to exclude all its content from assets exporting
+DCC_RESERVED_PREFIXES_LIST = ("$", "wgts")
 ROOT = "tree_root"  # Name given to the root node of built scene tree
 DCC_ROOTS_LIST = ('Master Collection', 'Scene Collection')  # list of names used by DCCs to call the root element in a scene hierarchy
 DCC_RESERVED_LIST = ('cutters', 'shapekeys', '$base', '$export', '$clothvolumes')  # list of reserved names used by DCCs for hierarchy elements that shouldn't be considered for export

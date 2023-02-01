@@ -3,7 +3,7 @@ python setup.py sdist bdist_wheel
 
 poi
 
-rez-pip -i .\dist\dcckit-0.0.6-py3-none-any.whl
+rez-pip -i .\dist\dcckit-0.0.7-py3-none-any.whl
 
 
 

@@ -10,7 +10,7 @@ import re
 import bpy
 
 from . import dcore
-from .dcore import DCC_ROOTS_LIST, DCC_RESERVED_LIST, ROOT, IGNORE, TAG_PREFIX, COMMENT_PREFIX, GROUP_PREFIX
+from .dcore import DCC_ROOTS_LIST, DCC_RESERVED_LIST, ROOT, IGNORE, DCC_RESERVED_PREFIXES_LIST, TAG_PREFIX, COMMENT_PREFIX, GROUP_PREFIX
 
 
 class BlenderDcc(dcore.Dcc):
@@ -68,7 +68,7 @@ class BlenderDcc(dcore.Dcc):
             if root.name.rstrip() in DCC_ROOTS_LIST:
                 scene_node.type = dcore.SceneNodeTypes.ROOT
                 scene_node.name = ROOT
-            elif root.name.lower() in DCC_RESERVED_LIST:
+            elif root.name.lower() in DCC_RESERVED_LIST or root.name.lower().startswith(DCC_RESERVED_PREFIXES_LIST):
                 scene_node.type = dcore.SceneNodeTypes.RESERVED
                 scene_node.name = "-reserved-"
             elif root.name.lower() == IGNORE:
