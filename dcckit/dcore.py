@@ -24,6 +24,7 @@ Their main purpose is to define a role for an element of the hierarchy
 COMMENT_PREFIX = '#'  # Used just for organization purposes in the scene and it never affects assets naming
 TAG_PREFIX = '@'  # Used for adding tags/words to the asset name. It never affects folder structure at export time
 GROUP_PREFIX = '*'  # A Group is similar to a tag but Group name can be included in export folder structure
+FOLDER_PREFIX = '/' # A folder is not added to the asset name but can be used to create additional folders in the export path
 RESERVED_CHARACTERS_PATTERN = '['+COMMENT_PREFIX+TAG_PREFIX+GROUP_PREFIX+']'
 IGNORE = 'ignore'  # This is a special name used to exclude all its content from assets exporting
 DCC_RESERVED_PREFIXES_LIST = ("$", "wgts")
@@ -75,7 +76,7 @@ class Asset3d:
     An Asset3D is composed by one or more Primitive3d
     """
 
-    def __init__(self, name="", unique_name="", primitives=[], group="", tags=[], metadata={}):
+    def __init__(self, name="", unique_name="", primitives=[], group="", tags=[], folder="", metadata={}):
         """
         :keyword param name: (str) assets name
         :keyword param primitives: (list) Primitives3d objects composing the asset
@@ -88,6 +89,7 @@ class Asset3d:
         self.unique_name = unique_name
         self.primitives = primitives
         self.group = group
+        self.folder = folder
         self.tags = tags
         self.metadata = metadata
         self.vertex_count = self.query_vertex_count()
@@ -171,7 +173,7 @@ class StaticMesh3d(Asset3d):
 
     engine_prefix = "SM_"
 
-    def __init__(self, name="", unique_name="", primitives=[], group="", tags=[], metadata={}):
+    def __init__(self, name="", unique_name="", primitives=[], group="", tags=[], folder="folder", metadata={}):
         """
         Overrides super method.
         There are 3 different primitive lists for meshes, colliders and socket
@@ -182,7 +184,7 @@ class StaticMesh3d(Asset3d):
         :keyword tags: (list) tags of the Asset
         :keyword metadata: (dict) asset metadata  (NOT USED YET!!)
         """
-        Asset3d.__init__(self, name, unique_name, primitives, group, tags, metadata)
+        Asset3d.__init__(self, name, unique_name, primitives, group, tags, folder, metadata)
         self.type = Asset3dTypes.STATIC_MESH
         self.meshes = self.query_primitives([Primitive3dRoles.MESH])
         self.colliders = self.query_primitives([Primitive3dRoles.COLLIDER])
@@ -219,7 +221,7 @@ class SkeletalMesh3d(Asset3d):
 
     engine_prefix = "SKM_"
 
-    def __init__(self, name="", unique_name="", primitives=[], group="", tags=[], metadata={}):
+    def __init__(self, name="", unique_name="", primitives=[], group="", tags=[], folder="", metadata={}):
         """
         Overrides super method.
         There are 3 different primitive lists for meshes, colliders and socket
@@ -230,7 +232,7 @@ class SkeletalMesh3d(Asset3d):
         :keyword tags: (list) tags of the Asset
         :keyword metadata: (dict) asset metadata  (NOT USED YET!!)
         """
-        Asset3d.__init__(self, name, unique_name, primitives, group, tags, metadata)
+        Asset3d.__init__(self, name, unique_name, primitives, group, tags, folder, metadata)
         self.type = Asset3dTypes.SKELETAL_MESH
         self.meshes = [primitive for primitive in self.primitives if primitive.role == Primitive3dRoles.MESH]
         self.bones = [primitive for primitive in self.primitives if primitive.role == Primitive3dRoles.SKELETON]
@@ -264,6 +266,7 @@ class SceneNodeTypes(Enum):
     ASSET = 4  # node containing an asset
     TAG = 5  # Tag node
     RESERVED = 6  # Reserved by DCC
+    FOLDER = 7  # node for adding a folder in the export path
 
 
 class SceneNode:
@@ -432,7 +435,7 @@ class Dcc:
                                   "\ndef make_unique_name(name):"
                                   "\n\treturn name.split('.')[0]")
 
-    def compose_asset_full_display_name(self, asset_node, use_tags=True, add_scene_name=False, collapse_groups=True):
+    def compose_asset_full_display_name(self, asset_node, use_tags=True, add_scene_name=False, collapse_groups=True, tag_folder=True):
         """
         Build full name for the file that must be exported
         :param asset_node:
@@ -472,12 +475,18 @@ class Dcc:
         final_asset_name = f"{scene_name}_{tags_before_string}_{group_name}_{tags_after_string}_{asset_name}"
 
         if collapse_groups and group_name!="":
-            final_subfolder = f"{scene_name}_{tags_before_string}_{group_name}"
+            if tag_folder:
+                final_subfolder = f"{scene_name}_{tags_before_string}_{group_name}"
+            else:
+                final_subfolder = f"{scene_name}_{group_name}"
         else:
             final_subfolder = final_asset_name
 
         final_asset_name = ((re.sub(RESERVED_CHARACTERS_PATTERN, "", final_asset_name)).replace("__", "_")).strip("_")
         final_subfolder = ((re.sub(RESERVED_CHARACTERS_PATTERN, "", final_subfolder)).replace("__", "_")).strip("_")
+
+        if asset_node.folder:
+            final_subfolder= os.path.join(asset_node.folder, final_subfolder)
 
         return final_asset_name, final_subfolder
 

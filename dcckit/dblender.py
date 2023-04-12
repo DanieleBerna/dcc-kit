@@ -10,7 +10,7 @@ import re
 import bpy
 
 from . import dcore
-from .dcore import DCC_ROOTS_LIST, DCC_RESERVED_LIST, ROOT, IGNORE, DCC_RESERVED_PREFIXES_LIST, TAG_PREFIX, COMMENT_PREFIX, GROUP_PREFIX
+from .dcore import DCC_ROOTS_LIST, DCC_RESERVED_LIST, ROOT, IGNORE, DCC_RESERVED_PREFIXES_LIST, TAG_PREFIX, COMMENT_PREFIX, GROUP_PREFIX, FOLDER_PREFIX
 
 
 class BlenderDcc(dcore.Dcc):
@@ -52,7 +52,7 @@ class BlenderDcc(dcore.Dcc):
     def query_current_scene_tree(self):
         master_collection = self.context.scene.collection
 
-        def recurse_scene_hierarchy(root, parent, group="", tags=[]):
+        def recurse_scene_hierarchy(root, parent, group="", folder="", tags=[]):
             """
             root: current hierarchy level
             parent: parent of current collection
@@ -89,6 +89,12 @@ class BlenderDcc(dcore.Dcc):
                 scene_node.display_name = BlenderDcc.make_unique_name(root.name[1:])
                 group = scene_node.name
                 tags.append(".")
+            elif root.name[0] == FOLDER_PREFIX:
+                scene_node.type = dcore.SceneNodeTypes.FOLDER
+                scene_node.name = root.name
+                scene_node.display_name = BlenderDcc.make_unique_name(root.name[1:])
+                folder = scene_node.display_name
+                #tags.append(".")
             else:
                 scene_node.type = dcore.SceneNodeTypes.ASSET
                 scene_node.name = root.name
@@ -123,21 +129,21 @@ class BlenderDcc(dcore.Dcc):
                             temp_primitives.append(dcore.Primitive3d(obj[1], prim_name, primitive_type, prim_vertex_count))
                 if asset_type == dcore.Asset3dTypes.STATIC_MESH:
                     scene_node.content = dcore.StaticMesh3d(name=scene_node.name, unique_name=BlenderDcc.make_unique_name(scene_node.name),
-                                                            group=group, tags=tags, primitives=temp_primitives)
+                                                            group=group, tags=tags, folder=folder, primitives=temp_primitives)
                 elif dcore.Asset3dTypes.SKELETAL_MESH:
                     scene_node.content = dcore.SkeletalMesh3d(name=scene_node.name, unique_name=BlenderDcc.make_unique_name(scene_node.name),
-                                                              group=group, tags=tags, primitives=temp_primitives)
+                                                              group=group, tags=tags, folder=folder, primitives=temp_primitives)
 
             if root.children:
                 for child in root.children:
-                    scene_node.children.append(recurse_scene_hierarchy(child, scene_node, group, tags[:]))
+                    scene_node.children.append(recurse_scene_hierarchy(child, scene_node, group, folder, tags[:]))
 
             return scene_node
 
         tree_root = recurse_scene_hierarchy(master_collection, None)
         return tree_root
 
-    def compose_asset_full_display_name(self, asset_node, use_tags=True, add_scene_name=False, collapse_groups=True):
+    def compose_asset_full_display_name(self, asset_node, use_tags=True, add_scene_name=False, collapse_groups=True, tag_folder=True):
         """
         Build full name for the file that must be exported
         :param asset_node:
@@ -145,7 +151,7 @@ class BlenderDcc(dcore.Dcc):
         :param add_scene_name:
         :return:
         """
-        final_asset_name, final_asset_folder = super().compose_asset_full_display_name(asset_node, use_tags=use_tags, add_scene_name=add_scene_name, collapse_groups=collapse_groups)
+        final_asset_name, final_asset_folder = super().compose_asset_full_display_name(asset_node, use_tags=use_tags, add_scene_name=add_scene_name, collapse_groups=collapse_groups, tag_folder=tag_folder)
         blender_duplicated_collection_pattern = ".[0-9][0-9][0-9]"
         final_asset_name = re.sub(blender_duplicated_collection_pattern, "", final_asset_name)
         final_asset_name = (final_asset_name.replace("__", "_")).strip("_")
@@ -182,9 +188,10 @@ class BlenderDcc(dcore.Dcc):
                                      axis_forward='Y',
                                      axis_up='Z',
                                      filter_glob='*.fbx',
-                                     bake_space_transform=True,
-                                     use_mesh_modifiers=True,
-                                     mesh_smooth_type='OFF',
+                                     # bake_space_transform=True,
+                                     use_space_transform=True,
+                                     use_mesh_modifiers=False,  # If True prevents exporting shape keys!!
+                                     mesh_smooth_type='FACE',
                                      use_mesh_edges=False,
                                      use_tspace=False,
                                      use_custom_props=True,
