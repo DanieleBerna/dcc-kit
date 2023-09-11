@@ -152,7 +152,7 @@ class BlenderDcc(dcore.Dcc):
         :return:
         """
         final_asset_name, final_asset_folder = super().compose_asset_full_display_name(asset_node, use_tags=use_tags, add_scene_name=add_scene_name, collapse_groups=collapse_groups, tag_folder=tag_folder)
-        blender_duplicated_collection_pattern = ".[0-9][0-9][0-9]"
+        blender_duplicated_collection_pattern = "[.][0-9][0-9][0-9]"
         final_asset_name = re.sub(blender_duplicated_collection_pattern, "", final_asset_name)
         final_asset_name = (final_asset_name.replace("__", "_")).strip("_")
 

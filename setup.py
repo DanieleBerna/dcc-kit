@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="dcckit",
-    version="0.0.7",
+    version="0.0.8",
     author="Daniele Bernardini",
     author_email="bdcreations@gmail.com",
     description="A package for dealing with DCC softwares and perform operations on game assets",
