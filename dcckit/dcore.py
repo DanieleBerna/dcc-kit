@@ -221,7 +221,7 @@ class SkeletalMesh3d(Asset3d):
 
     engine_prefix = "SKM_"
 
-    def __init__(self, name="", unique_name="", primitives=[], group="", tags=[], folder="", metadata={}):
+    def __init__(self, name="", unique_name="", primitives=[], group="", tags=[], folder="", metadata={}, has_morphs=False):
         """
         Overrides super method.
         There are 3 different primitive lists for meshes, colliders and socket
@@ -237,6 +237,7 @@ class SkeletalMesh3d(Asset3d):
         self.meshes = [primitive for primitive in self.primitives if primitive.role == Primitive3dRoles.MESH]
         self.bones = [primitive for primitive in self.primitives if primitive.role == Primitive3dRoles.SKELETON]
         self.sockets = [primitive for primitive in self.primitives if primitive.role == Primitive3dRoles.SOCKET]
+        self.has_morphs = has_morphs
 
     def __repr__(self):
         output = f"\n\tAsset: {self.name}\n\tType: {self.type}\n\tGroup: {self.group}\n"

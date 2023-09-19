@@ -101,6 +101,7 @@ class BlenderDcc(dcore.Dcc):
 
                 temp_primitives = []
                 asset_type = dcore.Asset3dTypes.STATIC_MESH
+                has_morphs = False
                 for obj in root.all_objects.items():
                     if not isinstance(obj, bpy.types.Collection) and obj[1].type in ("EMPTY", "MESH", "ARMATURE"):
                         is_valid = False
@@ -117,6 +118,9 @@ class BlenderDcc(dcore.Dcc):
                             is_valid = True
                         elif prim_data.type == "MESH":
                             primitive_type = dcore.Primitive3dRoles.MESH
+                            if prim_data.data.shape_keys:
+                                asset_type = dcore.Asset3dTypes.SKELETAL_MESH
+                                has_morphs = True
                             prim_vertex_count = len(prim_data.data.vertices)
                             is_valid = True
                         elif prim_data.type == "ARMATURE":
@@ -132,7 +136,7 @@ class BlenderDcc(dcore.Dcc):
                                                             group=group, tags=tags, folder=folder, primitives=temp_primitives)
                 elif dcore.Asset3dTypes.SKELETAL_MESH:
                     scene_node.content = dcore.SkeletalMesh3d(name=scene_node.name, unique_name=BlenderDcc.make_unique_name(scene_node.name),
-                                                              group=group, tags=tags, folder=folder, primitives=temp_primitives)
+                                                              group=group, tags=tags, folder=folder, primitives=temp_primitives, has_morphs=has_morphs)
 
             if root.children:
                 for child in root.children:
@@ -159,8 +163,6 @@ class BlenderDcc(dcore.Dcc):
         final_asset_folder = re.sub(blender_duplicated_collection_pattern, "", final_asset_folder)
         final_asset_folder = (final_asset_folder.replace("__", "_")).strip("_")
 
-        print(f"Final asset name: {final_asset_name}")
-        print(f"Final folder name: {final_asset_folder}")
         return final_asset_name, final_asset_folder
 
     def export_asset(self, asset_name, file_name="", destination_folder="./", file_format="fbx", options={}):
@@ -182,6 +184,16 @@ class BlenderDcc(dcore.Dcc):
 
             override_context['selected_objects'] = objects_to_export
 
+            if options['auto_detect_apply_modifiers']:
+                asset_to_export = self.scene.search_asset_by_name(asset_name)
+                if asset_to_export.type == dcore.Asset3dTypes.SKELETAL_MESH and asset_to_export.has_morphs:
+                    apply_modifiers = False
+                else:
+                    apply_modifiers = True
+            else:
+                apply_modifiers = options['apply_modifiers']
+
+            print(f"Exporting: {asset_name} - Export file: {full_path} - Apply Modifiers: {apply_modifiers}")
             bpy.ops.export_scene.fbx(override_context, filepath=full_path,
                                      path_mode='RELATIVE',
                                      use_selection=True,
@@ -190,7 +202,7 @@ class BlenderDcc(dcore.Dcc):
                                      filter_glob='*.fbx',
                                      # bake_space_transform=True,
                                      use_space_transform=True,
-                                     use_mesh_modifiers=False,  # If True prevents exporting shape keys!!
+                                     use_mesh_modifiers=apply_modifiers,  # If True prevents exporting shape keys!!
                                      mesh_smooth_type='FACE',
                                      use_mesh_edges=False,
                                      use_tspace=False,
